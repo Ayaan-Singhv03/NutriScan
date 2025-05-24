@@ -1,18 +1,31 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-const Test = sequelize.define('Test', {
+const User = sequelize.define('User', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
   },
+  googleId: {
+    type: DataTypes.STRING,
+    unique: true,
+    allowNull: false
+  },
+  email: {
+    type: DataTypes.STRING,
+    unique: true,
+    allowNull: false,
+    validate: {
+      isEmail: true
+    }
+  },
   name: {
     type: DataTypes.STRING,
     allowNull: false
   },
-  description: {
-    type: DataTypes.TEXT,
+  pictureUrl: {
+    type: DataTypes.STRING,
     allowNull: true
   },
   createdAt: {
@@ -25,4 +38,4 @@ const Test = sequelize.define('Test', {
   }
 });
 
-module.exports = Test; 
+module.exports = User; 

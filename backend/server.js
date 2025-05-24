@@ -1,10 +1,4 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const dotenv = require('dotenv');
-const sequelize = require('./config/database');
-const Test = require('./models/Test');
+const express = require('express');const cors = require('cors');const helmet = require('helmet');const morgan = require('morgan');const dotenv = require('dotenv');const sequelize = require('./config/database');const { User, Profile, DailyGoal, FoodItem, ConsumptionLog } = require('./models/relations');
 
 dotenv.config();
 
@@ -36,22 +30,21 @@ app.get('/', (req, res) => {
   res.json({ message: 'Welcome to NutriScan API' });
 });
 
-// Test routes
-app.post('/test', async (req, res) => {
+// Health check route
+app.get('/health', async (req, res) => {
   try {
-    const test = await Test.create(req.body);
-    res.status(201).json(test);
+    await sequelize.authenticate();
+    res.json({ 
+      status: 'healthy', 
+      database: 'connected',
+      models: ['User', 'Profile', 'DailyGoal', 'FoodItem', 'ConsumptionLog']
+    });
   } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-app.get('/test', async (req, res) => {
-  try {
-    const tests = await Test.findAll();
-    res.json(tests);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      status: 'unhealthy', 
+      database: 'disconnected',
+      error: error.message 
+    });
   }
 });
 
