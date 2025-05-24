@@ -8,7 +8,7 @@ const DailyGoal = sequelize.define('DailyGoal', {
     autoIncrement: true
   },
   userId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     allowNull: false,
     unique: true,
     references: {
@@ -16,40 +16,41 @@ const DailyGoal = sequelize.define('DailyGoal', {
       key: 'id'
     }
   },
-  calories: {
+  goalType: {
+    type: DataTypes.ENUM('lose_weight', 'gain_weight', 'maintain'),
+    allowNull: false
+  },
+  targetCalories: {
     type: DataTypes.INTEGER,
     allowNull: false,
     validate: {
       min: 0
     }
   },
-  carbs: {
+  targetProtein: {
     type: DataTypes.FLOAT,
     allowNull: false,
     validate: {
       min: 0
     }
   },
-  proteins: {
+  targetCarbs: {
     type: DataTypes.FLOAT,
     allowNull: false,
     validate: {
       min: 0
     }
   },
-  fats: {
+  targetFat: {
     type: DataTypes.FLOAT,
     allowNull: false,
     validate: {
       min: 0
     }
   },
-  sugars: {
-    type: DataTypes.FLOAT,
-    allowNull: false,
-    validate: {
-      min: 0
-    }
+  isAutoCalculated: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
   },
   createdAt: {
     type: DataTypes.DATE,

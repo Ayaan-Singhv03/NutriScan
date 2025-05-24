@@ -8,7 +8,7 @@ const Profile = sequelize.define('Profile', {
     autoIncrement: true
   },
   userId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     allowNull: false,
     unique: true,
     references: {
@@ -46,14 +46,10 @@ const Profile = sequelize.define('Profile', {
   },
   bmi: {
     type: DataTypes.FLOAT,
-    allowNull: false
+    allowNull: true
   },
   activityLevel: {
-    type: DataTypes.ENUM('sedentary', 'light', 'moderate', 'active', 'very_active'),
-    allowNull: false
-  },
-  goalType: {
-    type: DataTypes.ENUM('loss', 'gain', 'maintain'),
+    type: DataTypes.ENUM('sedentary', 'lightly_active', 'moderately_active', 'very_active', 'extra_active'),
     allowNull: false
   },
   createdAt: {

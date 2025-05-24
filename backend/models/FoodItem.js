@@ -11,21 +11,15 @@ const FoodItem = sequelize.define('FoodItem', {
     type: DataTypes.STRING,
     allowNull: false
   },
-  servingSize: {
-    type: DataTypes.FLOAT,
-    allowNull: false,
-    validate: {
-      min: 0
-    }
+  brand: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  category: {
+    type: DataTypes.STRING,
+    allowNull: true
   },
   caloriesPer100g: {
-    type: DataTypes.FLOAT,
-    allowNull: false,
-    validate: {
-      min: 0
-    }
-  },
-  carbsPer100g: {
     type: DataTypes.FLOAT,
     allowNull: false,
     validate: {
@@ -39,9 +33,23 @@ const FoodItem = sequelize.define('FoodItem', {
       min: 0
     }
   },
+  carbsPer100g: {
+    type: DataTypes.FLOAT,
+    allowNull: false,
+    validate: {
+      min: 0
+    }
+  },
   fatsPer100g: {
     type: DataTypes.FLOAT,
     allowNull: false,
+    validate: {
+      min: 0
+    }
+  },
+  fiberPer100g: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
     validate: {
       min: 0
     }
@@ -52,6 +60,43 @@ const FoodItem = sequelize.define('FoodItem', {
     validate: {
       min: 0
     }
+  },
+  sodiumPer100g: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+    validate: {
+      min: 0
+    }
+  },
+  servingSize: {
+    type: DataTypes.FLOAT,
+    allowNull: false,
+    validate: {
+      min: 0
+    }
+  },
+  servingUnit: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  servingSizeGrams: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+    validate: {
+      min: 0
+    }
+  },
+  imageUrl: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  source: {
+    type: DataTypes.ENUM('openfoodfacts', 'manual'),
+    defaultValue: 'manual'
+  },
+  lastUpdated: {
+    type: DataTypes.DATE,
+    defaultValue: DataTypes.NOW
   },
   createdAt: {
     type: DataTypes.DATE,

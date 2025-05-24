@@ -3,11 +3,11 @@ const sequelize = require('../config/database');
 
 const User = sequelize.define('User', {
   id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
   },
-  googleId: {
+  firebase_uid: {
     type: DataTypes.STRING,
     unique: true,
     allowNull: false
@@ -22,7 +22,7 @@ const User = sequelize.define('User', {
   },
   name: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: true
   },
   pictureUrl: {
     type: DataTypes.STRING,

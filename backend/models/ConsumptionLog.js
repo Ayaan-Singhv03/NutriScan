@@ -8,7 +8,7 @@ const ConsumptionLog = sequelize.define('ConsumptionLog', {
     autoIncrement: true
   },
   userId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     allowNull: false,
     references: {
       model: 'Users',
@@ -23,10 +23,6 @@ const ConsumptionLog = sequelize.define('ConsumptionLog', {
       key: 'barcode'
     }
   },
-  date: {
-    type: DataTypes.DATEONLY,
-    allowNull: false
-  },
   amountConsumed: {
     type: DataTypes.FLOAT,
     allowNull: false,
@@ -34,40 +30,42 @@ const ConsumptionLog = sequelize.define('ConsumptionLog', {
       min: 0
     }
   },
-  caloriesConsumed: {
-    type: DataTypes.FLOAT,
+  consumedAt: {
+    type: DataTypes.DATE,
     allowNull: false,
-    validate: {
-      min: 0
-    }
+    defaultValue: DataTypes.NOW
   },
-  carbsConsumed: {
+  calculatedCalories: {
     type: DataTypes.FLOAT,
-    allowNull: false,
-    validate: {
-      min: 0
-    }
+    allowNull: true
   },
-  proteinsConsumed: {
+  calculatedProtein: {
     type: DataTypes.FLOAT,
-    allowNull: false,
-    validate: {
-      min: 0
-    }
+    allowNull: true
   },
-  fatsConsumed: {
+  calculatedCarbs: {
     type: DataTypes.FLOAT,
-    allowNull: false,
-    validate: {
-      min: 0
-    }
+    allowNull: true
   },
-  sugarsConsumed: {
+  calculatedFat: {
     type: DataTypes.FLOAT,
-    allowNull: false,
-    validate: {
-      min: 0
-    }
+    allowNull: true
+  },
+  calculatedFiber: {
+    type: DataTypes.FLOAT,
+    allowNull: true
+  },
+  calculatedSugar: {
+    type: DataTypes.FLOAT,
+    allowNull: true
+  },
+  calculatedSodium: {
+    type: DataTypes.FLOAT,
+    allowNull: true
+  },
+  isManualEntry: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
   },
   createdAt: {
     type: DataTypes.DATE,
