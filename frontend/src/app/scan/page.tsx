@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { BrowserMultiFormatReader, BrowserCodeReader, Result } from '@zxing/browser';
+import { BrowserMultiFormatReader, BrowserCodeReader } from '@zxing/browser';
 import { useRouter } from 'next/navigation';
 import { X, Camera, RotateCcw, Flashlight } from 'lucide-react';
 import { toast } from 'sonner';
@@ -140,7 +140,7 @@ export default function ScanPage() {
           const controls = await readerRef.current.decodeFromVideoDevice(
             selectedDeviceId,
             videoRef.current,
-            (result: Result, error: any, controls: any) => {
+            (result: any, error: any, controls: any) => {
               if (result && scanningRef.current) {
                 const barcodeText = result.getText();
                 addDebug(`🎯 FOUND: ${barcodeText}`);
@@ -186,7 +186,7 @@ export default function ScanPage() {
           
           const controls = await readerRef.current.decodeFromVideoElement(
             videoRef.current,
-            (result: Result) => {
+            (result: any, error: any) => {
               if (result && scanningRef.current) {
                 const barcodeText = result.getText();
                 addDebug(`🎯 FOUND: ${barcodeText}`);
@@ -209,9 +209,10 @@ export default function ScanPage() {
                 cleanup();
                 router.push(`/product/${barcodeText}`);
               }
+              
+              // Count attempts
               setScanAttempts(prev => prev + 1);
-            },
-            (error: any) => {
+              
               // Only log significant errors
               if (error && error.message && 
                   !error.message.includes('NotFoundException') && 
@@ -219,7 +220,6 @@ export default function ScanPage() {
                   !error.message.includes('NotFoundError')) {
                 addDebug(`Scan error: ${error.message.substring(0, 25)}`);
               }
-              setScanAttempts(prev => prev + 1);
             }
           );
           
@@ -371,11 +371,11 @@ export default function ScanPage() {
 
     try {
       const track = streamRef.current.getVideoTracks()[0];
-      const capabilities = track.getCapabilities();
+      const capabilities = track.getCapabilities() as any;
       
       if (capabilities.torch) {
         await track.applyConstraints({
-          advanced: [{ torch: !torchEnabled }]
+          advanced: [{ torch: !torchEnabled } as any]
         });
         setTorchEnabled(!torchEnabled);
         addDebug(`Torch ${!torchEnabled ? 'ON' : 'OFF'}`);
