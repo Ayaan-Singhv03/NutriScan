@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 export default function TestAuthPage() {
   const { user, firebaseUser, loading, isNewUser, isReady, logout } = useAuth();
-  const [testResults, setTestResults] = useState<any>({});
+  const [testResults, setTestResults] = useState<Record<string, any>>({});
   const router = useRouter();
 
   const testEnvironmentVariables = () => {
@@ -20,7 +20,7 @@ export default function TestAuthPage() {
     };
     
     console.log('Environment Variables:', envVars);
-    setTestResults(prev => ({ ...prev, envVars }));
+    setTestResults((prev: Record<string, any>) => ({ ...prev, envVars }));
   };
 
   const testBackendConnection = async () => {
@@ -32,16 +32,16 @@ export default function TestAuthPage() {
       const data = await response.json();
       
       console.log('Backend health check:', data);
-      setTestResults(prev => ({ ...prev, backendHealth: data }));
-    } catch (error) {
+      setTestResults((prev: Record<string, any>) => ({ ...prev, backendHealth: data }));
+    } catch (error: any) {
       console.error('Backend connection failed:', error);
-      setTestResults(prev => ({ ...prev, backendError: error.message }));
+      setTestResults((prev: Record<string, any>) => ({ ...prev, backendError: error.message }));
     }
   };
 
   const testProfileEndpoint = async () => {
     if (!firebaseUser) {
-      setTestResults(prev => ({ ...prev, profileTest: 'No Firebase user' }));
+      setTestResults((prev: Record<string, any>) => ({ ...prev, profileTest: 'No Firebase user' }));
       return;
     }
 
@@ -64,10 +64,10 @@ export default function TestAuthPage() {
       };
 
       console.log('Profile endpoint test:', result);
-      setTestResults(prev => ({ ...prev, profileTest: result }));
-    } catch (error) {
+      setTestResults((prev: Record<string, any>) => ({ ...prev, profileTest: result }));
+    } catch (error: any) {
       console.error('Profile test failed:', error);
-      setTestResults(prev => ({ ...prev, profileTestError: error.message }));
+      setTestResults((prev: Record<string, any>) => ({ ...prev, profileTestError: error.message }));
     }
   };
 
@@ -95,7 +95,7 @@ export default function TestAuthPage() {
     });
     
     console.log('✅ Browser data cleared');
-    setTestResults(prev => ({ ...prev, browserDataCleared: 'Success' }));
+    setTestResults((prev: Record<string, any>) => ({ ...prev, browserDataCleared: 'Success' }));
   };
 
   const forceRefresh = () => {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Html5QrcodeScanner, Html5QrcodeScannerConfig, Html5QrcodeScanType } from 'html5-qrcode';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icons } from '@/components/ui/icons';
@@ -56,7 +56,7 @@ export default function BarcodeScanner({ onFoodScanned, onClose }: BarcodeScanne
   }, [isScanning, manualMode]);
 
   const startScanner = () => {
-    const config: Html5QrcodeScannerConfig = {
+    const config = {
       fps: 10,
       qrbox: {
         width: 300,
@@ -64,7 +64,7 @@ export default function BarcodeScanner({ onFoodScanned, onClose }: BarcodeScanne
       },
       aspectRatio: 1.7777778,
       disableFlip: false,
-      supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+      supportedScanTypes: [0],
       showTorchButtonIfSupported: true,
       showZoomSliderIfSupported: true,
       defaultZoomValueIfSupported: 2,
