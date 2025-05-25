@@ -30,6 +30,11 @@ const ConsumptionLog = sequelize.define('ConsumptionLog', {
       min: 0
     }
   },
+  date: {
+    type: DataTypes.DATEONLY,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
+  },
   consumedAt: {
     type: DataTypes.DATE,
     allowNull: false,

@@ -27,36 +27,32 @@ app.use(morgan('dev'));
 // Test database connection and sync models
 sequelize.authenticate()
   .then(() => {
-    console.log('Database connection has been established successfully.');
+    console.log('✅ Database connection has been established successfully.');
     console.log('🏗️ Syncing database models...');
     
-    // Explicitly sync each model to ensure they're all created
-    console.log('Creating User table...');
-    return User.sync({ force: true });
-  })
-  .then(() => {
-    console.log('✅ User table created');
-    console.log('Creating Profile table...');
-    return Profile.sync({ force: true });
-  })
-  .then(() => {
-    console.log('✅ Profile table created');
-    console.log('Creating DailyGoal table...');
-    return DailyGoal.sync({ force: true });
-  })
-  .then(() => {
-    console.log('✅ DailyGoal table created');
-    console.log('Creating FoodItem table...');
-    return FoodItem.sync({ force: true });
-  })
-  .then(() => {
-    console.log('✅ FoodItem table created');
-    console.log('Creating ConsumptionLog table...');
-    return ConsumptionLog.sync({ force: true });
+    // Sync all models without dropping existing data
+    return sequelize.sync({ alter: true }); // Use alter instead of force
   })
   .then(() => {
     console.log('✅ All models synchronized successfully!');
-    console.log('🎉 Database ready! Users will be created via authentication.');
+    console.log('🎉 Database ready! Existing data preserved.');
+    
+    // Log current table counts
+    return Promise.all([
+      User.count(),
+      Profile.count(),
+      DailyGoal.count(),
+      FoodItem.count(),
+      ConsumptionLog.count()
+    ]);
+  })
+  .then(([userCount, profileCount, goalCount, foodCount, logCount]) => {
+    console.log('📊 Current database counts:');
+    console.log(`   Users: ${userCount}`);
+    console.log(`   Profiles: ${profileCount}`);
+    console.log(`   Daily Goals: ${goalCount}`);
+    console.log(`   Food Items: ${foodCount}`);
+    console.log(`   Consumption Logs: ${logCount}`);
   })
   .catch(err => {
     console.error('❌ Database sync error:', err);

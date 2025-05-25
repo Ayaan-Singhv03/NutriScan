@@ -1,6 +1,9 @@
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
+console.log('🗄️ Initializing database connection...');
+console.log('🗄️ DATABASE_URL present:', !!process.env.DATABASE_URL);
+
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: 'postgres',
   dialectOptions: {
@@ -9,7 +12,7 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
       rejectUnauthorized: false
     }
   },
-  logging: false, // Set to console.log to see SQL queries
+  logging: console.log, // Enable logging to see SQL queries
   pool: {
     max: 5,
     min: 0,
@@ -17,5 +20,14 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
     idle: 10000
   }
 });
+
+// Test the connection
+sequelize.authenticate()
+  .then(() => {
+    console.log('✅ Database connection established successfully.');
+  })
+  .catch(err => {
+    console.error('❌ Unable to connect to the database:', err);
+  });
 
 module.exports = sequelize; 

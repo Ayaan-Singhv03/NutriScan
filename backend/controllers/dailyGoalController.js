@@ -168,17 +168,22 @@ const dailyGoalController = {
   // GET /api/goals - Get user's daily goals
   getDailyGoal: async (req, res) => {
     try {
+      console.log('🎯 Getting daily goals for user:', req.user.uid);
+      
       const user = await User.findOne({ 
         where: { firebase_uid: req.user.uid } 
       });
 
       if (!user) {
+        console.log('❌ User not found in database');
         return res.status(404).json({ 
           error: 'User not found' 
         });
       }
 
-      const dailyGoal = await DailyGoal.findOne({ 
+      console.log('👤 User found:', user.id);
+
+      let dailyGoal = await DailyGoal.findOne({ 
         where: { userId: user.id },
         include: [{
           model: User,
@@ -186,11 +191,55 @@ const dailyGoalController = {
         }]
       });
 
+      // If no daily goal exists, auto-create one based on profile
       if (!dailyGoal) {
-        return res.status(404).json({ 
-          error: 'Daily goal not found' 
+        console.log('🎯 No daily goal found - auto-creating based on profile...');
+        
+        const profile = await Profile.findOne({ 
+          where: { userId: user.id } 
+        });
+
+        if (!profile) {
+          console.log('❌ Profile not found for auto-calculation');
+          return res.status(400).json({ 
+            error: 'Profile required to calculate daily goals. Please complete your profile first.' 
+          });
+        }
+
+        console.log('👤 Profile found - calculating goals...');
+        const calculatedGoals = calculatePersonalizedGoals(profile, 'maintain'); // Default to maintain
+        
+        console.log('🧮 Auto-calculated goals:', calculatedGoals);
+        
+        dailyGoal = await DailyGoal.create({
+          userId: user.id,
+          goalType: 'maintain',
+          targetCalories: calculatedGoals.targetCalories,
+          targetCarbs: calculatedGoals.targetCarbs,
+          targetProtein: calculatedGoals.targetProtein,
+          targetFat: calculatedGoals.targetFat,
+          isAutoCalculated: true
+        });
+        
+        console.log('✅ Daily goals auto-created:', dailyGoal.id);
+        
+        // Fetch the created goal with user info
+        dailyGoal = await DailyGoal.findOne({ 
+          where: { userId: user.id },
+          include: [{
+            model: User,
+            attributes: ['id', 'email', 'name']
+          }]
         });
       }
+
+      console.log('✅ Returning daily goals:', {
+        id: dailyGoal.id,
+        calories: dailyGoal.targetCalories,
+        protein: dailyGoal.targetProtein,
+        carbs: dailyGoal.targetCarbs,
+        fat: dailyGoal.targetFat
+      });
 
       res.status(200).json({ dailyGoal });
 

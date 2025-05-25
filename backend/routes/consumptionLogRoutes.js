@@ -6,6 +6,9 @@ const authMiddleware = require('../middlewares/authMiddleware');
 // All consumption log routes require authentication
 router.use(authMiddleware);
 
+// POST /api/logs/scan - Scan barcode and log consumption in one step  
+router.post('/scan', consumptionLogController.scanAndLogFood);
+
 // POST /api/logs - Create consumption log
 router.post('/', consumptionLogController.createConsumptionLog);
 

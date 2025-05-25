@@ -6,11 +6,11 @@ const calculateNutritionFromAmount = (foodItem, amountConsumed) => {
   const ratio = amountConsumed / 100; // Convert from per 100g to consumed amount
   
   return {
-    caloriesConsumed: Math.round((foodItem.caloriesPer100g * ratio) * 10) / 10,
-    carbsConsumed: Math.round((foodItem.carbsPer100g * ratio) * 10) / 10,
-    proteinsConsumed: Math.round((foodItem.proteinsPer100g * ratio) * 10) / 10,
-    fatsConsumed: Math.round((foodItem.fatsPer100g * ratio) * 10) / 10,
-    sugarsConsumed: Math.round((foodItem.sugarsPer100g * ratio) * 10) / 10
+    calculatedCalories: Math.round((foodItem.caloriesPer100g * ratio) * 10) / 10,
+    calculatedCarbs: Math.round((foodItem.carbsPer100g * ratio) * 10) / 10,
+    calculatedProtein: Math.round((foodItem.proteinsPer100g * ratio) * 10) / 10,
+    calculatedFat: Math.round((foodItem.fatsPer100g * ratio) * 10) / 10,
+    calculatedSugar: Math.round((foodItem.sugarsPer100g * ratio) * 10) / 10
   };
 };
 
@@ -67,11 +67,11 @@ const consumptionLogController = {
       } else {
         // Use provided values or calculate if not provided
         nutritionValues = {
-          caloriesConsumed: caloriesConsumed !== undefined ? caloriesConsumed : calculateNutritionFromAmount(foodItem, amountConsumed).caloriesConsumed,
-          carbsConsumed: carbsConsumed !== undefined ? carbsConsumed : calculateNutritionFromAmount(foodItem, amountConsumed).carbsConsumed,
-          proteinsConsumed: proteinsConsumed !== undefined ? proteinsConsumed : calculateNutritionFromAmount(foodItem, amountConsumed).proteinsConsumed,
-          fatsConsumed: fatsConsumed !== undefined ? fatsConsumed : calculateNutritionFromAmount(foodItem, amountConsumed).fatsConsumed,
-          sugarsConsumed: sugarsConsumed !== undefined ? sugarsConsumed : calculateNutritionFromAmount(foodItem, amountConsumed).sugarsConsumed
+          calculatedCalories: caloriesConsumed !== undefined ? caloriesConsumed : calculateNutritionFromAmount(foodItem, amountConsumed).calculatedCalories,
+          calculatedCarbs: carbsConsumed !== undefined ? carbsConsumed : calculateNutritionFromAmount(foodItem, amountConsumed).calculatedCarbs,
+          calculatedProtein: proteinsConsumed !== undefined ? proteinsConsumed : calculateNutritionFromAmount(foodItem, amountConsumed).calculatedProtein,
+          calculatedFat: fatsConsumed !== undefined ? fatsConsumed : calculateNutritionFromAmount(foodItem, amountConsumed).calculatedFat,
+          calculatedSugar: sugarsConsumed !== undefined ? sugarsConsumed : calculateNutritionFromAmount(foodItem, amountConsumed).calculatedSugar
         };
       }
 
@@ -246,11 +246,11 @@ const consumptionLogController = {
 
       // Calculate totals
       const summary = logs.reduce((totals, log) => ({
-        totalCalories: Math.round((totals.totalCalories + log.caloriesConsumed) * 10) / 10,
-        totalCarbs: Math.round((totals.totalCarbs + log.carbsConsumed) * 10) / 10,
-        totalProteins: Math.round((totals.totalProteins + log.proteinsConsumed) * 10) / 10,
-        totalFats: Math.round((totals.totalFats + log.fatsConsumed) * 10) / 10,
-        totalSugars: Math.round((totals.totalSugars + log.sugarsConsumed) * 10) / 10,
+        totalCalories: Math.round((totals.totalCalories + log.calculatedCalories) * 10) / 10,
+        totalCarbs: Math.round((totals.totalCarbs + log.calculatedCarbs) * 10) / 10,
+        totalProteins: Math.round((totals.totalProteins + log.calculatedProtein) * 10) / 10,
+        totalFats: Math.round((totals.totalFats + log.calculatedFat) * 10) / 10,
+        totalSugars: Math.round((totals.totalSugars + log.calculatedSugar) * 10) / 10,
         totalItems: totals.totalItems + 1
       }), {
         totalCalories: 0,
@@ -311,11 +311,11 @@ const consumptionLogController = {
           id: log.id,
           foodName: log.FoodItem.name,
           amountConsumed: log.amountConsumed,
-          caloriesConsumed: log.caloriesConsumed,
-          carbsConsumed: log.carbsConsumed,
-          proteinsConsumed: log.proteinsConsumed,
-          fatsConsumed: log.fatsConsumed,
-          sugarsConsumed: log.sugarsConsumed,
+          caloriesConsumed: log.calculatedCalories,
+          carbsConsumed: log.calculatedCarbs,
+          proteinsConsumed: log.calculatedProtein,
+          fatsConsumed: log.calculatedFat,
+          sugarsConsumed: log.calculatedSugar,
           createdAt: log.createdAt
         }))
       });
@@ -386,11 +386,11 @@ const consumptionLogController = {
 
       // Allow manual overrides if auto-calculate is false
       if (!autoCalculate) {
-        if (caloriesConsumed !== undefined) updateData.caloriesConsumed = caloriesConsumed;
-        if (carbsConsumed !== undefined) updateData.carbsConsumed = carbsConsumed;
-        if (proteinsConsumed !== undefined) updateData.proteinsConsumed = proteinsConsumed;
-        if (fatsConsumed !== undefined) updateData.fatsConsumed = fatsConsumed;
-        if (sugarsConsumed !== undefined) updateData.sugarsConsumed = sugarsConsumed;
+        if (caloriesConsumed !== undefined) updateData.calculatedCalories = caloriesConsumed;
+        if (carbsConsumed !== undefined) updateData.calculatedCarbs = carbsConsumed;
+        if (proteinsConsumed !== undefined) updateData.calculatedProtein = proteinsConsumed;
+        if (fatsConsumed !== undefined) updateData.calculatedFat = fatsConsumed;
+        if (sugarsConsumed !== undefined) updateData.calculatedSugar = sugarsConsumed;
       }
 
       // Update consumption log
@@ -456,6 +456,124 @@ const consumptionLogController = {
       console.error('Delete consumption log error:', error);
       res.status(500).json({ 
         error: 'Failed to delete consumption log' 
+      });
+    }
+  },
+
+  // POST /api/logs/scan - Scan barcode and log consumption in one step
+  scanAndLogFood: async (req, res) => {
+    try {
+      const { barcode, amountConsumed = 100 } = req.body;
+
+      if (!barcode) {
+        return res.status(400).json({ 
+          error: 'Barcode is required' 
+        });
+      }
+
+      const user = await User.findOne({ 
+        where: { firebase_uid: req.user.uid } 
+      });
+
+      if (!user) {
+        return res.status(404).json({ 
+          error: 'User not found' 
+        });
+      }
+
+      // First, try to get food item from database or OpenFoodFacts
+      const openFoodFactsService = require('../services/openFoodFactsService');
+      
+      let foodItem = await FoodItem.findOne({ 
+        where: { barcode } 
+      });
+
+      let additionalData = null;
+
+      // If not found in database, try OpenFoodFacts
+      if (!foodItem) {
+        try {
+          console.log(`Fetching data for barcode ${barcode} from OpenFoodFacts...`);
+          const openFoodFactsData = await openFoodFactsService.getProductByBarcode(barcode);
+          
+          if (openFoodFactsData) {
+            // Create new food item in database
+            foodItem = await FoodItem.create({
+              barcode: openFoodFactsData.barcode,
+              name: openFoodFactsData.name,
+              servingSize: openFoodFactsData.servingSize,
+              caloriesPer100g: openFoodFactsData.caloriesPer100g,
+              carbsPer100g: openFoodFactsData.carbsPer100g,
+              proteinsPer100g: openFoodFactsData.proteinsPer100g,
+              fatsPer100g: openFoodFactsData.fatsPer100g,
+              sugarsPer100g: openFoodFactsData.sugarsPer100g
+            });
+
+            additionalData = {
+              brand: openFoodFactsData.brand,
+              imageUrl: openFoodFactsData.imageUrl,
+              ingredients: openFoodFactsData.ingredients,
+              categories: openFoodFactsData.categories
+            };
+          }
+        } catch (openFoodFactsError) {
+          console.error('OpenFoodFacts error:', openFoodFactsError.message);
+        }
+      }
+
+      if (!foodItem) {
+        return res.status(404).json({ 
+          error: 'Food item not found in database or OpenFoodFacts',
+          barcode: barcode
+        });
+      }
+
+      // Calculate nutrition values
+      const nutritionValues = calculateNutritionFromAmount(foodItem, amountConsumed);
+      
+      // Create consumption log
+      const consumptionLog = await ConsumptionLog.create({
+        userId: user.id,
+        barcode,
+        date: new Date().toISOString().split('T')[0], // Today's date
+        amountConsumed: parseFloat(amountConsumed),
+        ...nutritionValues
+      });
+
+      // Return both food item data and consumption log
+      res.status(201).json({
+        message: 'Food scanned and logged successfully',
+        foodItem: {
+          barcode: foodItem.barcode,
+          name: foodItem.name,
+          brand: additionalData?.brand,
+          caloriesPer100g: foodItem.caloriesPer100g,
+          carbsPer100g: foodItem.carbsPer100g,
+          proteinsPer100g: foodItem.proteinsPer100g,
+          fatsPer100g: foodItem.fatsPer100g,
+          sugarsPer100g: foodItem.sugarsPer100g,
+          servingSize: foodItem.servingSize,
+          imageUrl: additionalData?.imageUrl
+        },
+        consumptionLog: {
+          id: consumptionLog.id,
+          amountConsumed: consumptionLog.amountConsumed,
+          calculatedCalories: consumptionLog.calculatedCalories,
+          calculatedProtein: consumptionLog.calculatedProtein,
+          calculatedCarbs: consumptionLog.calculatedCarbs,
+          calculatedFat: consumptionLog.calculatedFat,
+          calculatedSugar: consumptionLog.calculatedSugar,
+          date: consumptionLog.date,
+          createdAt: consumptionLog.createdAt
+        },
+        source: additionalData ? 'openfoodfacts' : 'database',
+        additionalData
+      });
+
+    } catch (error) {
+      console.error('Scan and log error:', error);
+      res.status(500).json({ 
+        error: 'Failed to scan and log food' 
       });
     }
   }
