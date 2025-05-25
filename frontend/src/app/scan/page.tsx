@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { BrowserMultiFormatReader, Result } from '@zxing/browser';
+import { BrowserMultiFormatReader, BrowserCodeReader, Result } from '@zxing/browser';
 import { useRouter } from 'next/navigation';
 import { X, Camera, RotateCcw, Flashlight } from 'lucide-react';
 import { toast } from 'sonner';
@@ -42,10 +42,10 @@ export default function ScanPage() {
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         addDebug('Camera granted!');
         setHasPermission(true);
-        streamRef.current = stream;
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+      streamRef.current = stream;
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
           addDebug('Video attached');
           
           videoRef.current.onloadedmetadata = () => {
@@ -123,12 +123,12 @@ export default function ScanPage() {
       try {
         addDebug('Starting continuous scan...');
         
-        // Get available video devices for better device targeting
-        const videoInputDevices = await readerRef.current.listVideoInputDevices();
+        // Get available video devices using the static method from BrowserCodeReader
+        const videoInputDevices = await BrowserCodeReader.listVideoInputDevices();
         addDebug(`Found ${videoInputDevices.length} camera(s)`);
         
         // Use decodeFromVideoDevice with device selection for better compatibility
-        const selectedDeviceId = videoInputDevices.find(device => 
+        const selectedDeviceId = videoInputDevices.find((device: any) => 
           device.label.toLowerCase().includes('back') || 
           device.label.toLowerCase().includes('environment')
         )?.deviceId || videoInputDevices[0]?.deviceId;
@@ -144,8 +144,22 @@ export default function ScanPage() {
               if (result && scanningRef.current) {
                 const barcodeText = result.getText();
                 addDebug(`🎯 FOUND: ${barcodeText}`);
-                toast.success(`Barcode detected: ${barcodeText}`);
                 
+                // Check if this is a URL or a product barcode
+                if (barcodeText.startsWith('http://') || barcodeText.startsWith('https://')) {
+                  toast.error('URL detected - please scan a product barcode');
+                  addDebug('URL detected, not a product barcode');
+                  return; // Don't navigate for URLs
+                }
+                
+                // Check if it looks like a product barcode (numeric or standard format)
+                if (!/^[0-9]{8,}$/.test(barcodeText) && !/^[A-Z0-9]{6,}$/.test(barcodeText)) {
+                  toast.error('Invalid barcode format - please scan a product barcode');
+                  addDebug('Invalid barcode format');
+                  return;
+                }
+                
+                toast.success(`Product barcode detected: ${barcodeText}`);
                 cleanup();
                 router.push(`/product/${barcodeText}`);
               }
@@ -176,8 +190,22 @@ export default function ScanPage() {
               if (result && scanningRef.current) {
                 const barcodeText = result.getText();
                 addDebug(`🎯 FOUND: ${barcodeText}`);
-                toast.success(`Barcode detected: ${barcodeText}`);
                 
+                // Check if this is a URL or a product barcode
+                if (barcodeText.startsWith('http://') || barcodeText.startsWith('https://')) {
+                  toast.error('URL detected - please scan a product barcode');
+                  addDebug('URL detected, not a product barcode');
+                  return; // Don't navigate for URLs
+                }
+                
+                // Check if it looks like a product barcode (numeric or standard format)
+                if (!/^[0-9]{8,}$/.test(barcodeText) && !/^[A-Z0-9]{6,}$/.test(barcodeText)) {
+                  toast.error('Invalid barcode format - please scan a product barcode');
+                  addDebug('Invalid barcode format');
+                  return;
+                }
+                
+                toast.success(`Product barcode detected: ${barcodeText}`);
                 cleanup();
                 router.push(`/product/${barcodeText}`);
               }
@@ -228,9 +256,9 @@ export default function ScanPage() {
         }
       }
       
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
         addDebug('Camera stopped');
       }
     };
@@ -268,7 +296,22 @@ export default function ScanPage() {
         if (result) {
           const barcodeText = result.getText();
           addDebug(`Manual success: ${barcodeText}`);
-          toast.success(`Barcode detected: ${barcodeText}`);
+          
+          // Check if this is a URL or a product barcode
+          if (barcodeText.startsWith('http://') || barcodeText.startsWith('https://')) {
+            toast.error('URL detected - please scan a product barcode');
+            addDebug('URL detected, not a product barcode');
+            return; // Don't navigate for URLs
+          }
+          
+          // Check if it looks like a product barcode (numeric or standard format)
+          if (!/^[0-9]{8,}$/.test(barcodeText) && !/^[A-Z0-9]{6,}$/.test(barcodeText)) {
+            toast.error('Invalid barcode format - please scan a product barcode');
+            addDebug('Invalid barcode format');
+            return;
+          }
+          
+          toast.success(`Product barcode detected: ${barcodeText}`);
           router.push(`/product/${barcodeText}`);
           return;
         }
@@ -288,7 +331,22 @@ export default function ScanPage() {
               if (canvasResult) {
                 const barcodeText = canvasResult.getText();
                 addDebug(`Canvas success: ${barcodeText}`);
-                toast.success(`Barcode detected: ${barcodeText}`);
+                
+                // Check if this is a URL or a product barcode
+                if (barcodeText.startsWith('http://') || barcodeText.startsWith('https://')) {
+                  toast.error('URL detected - please scan a product barcode');
+                  addDebug('URL detected, not a product barcode');
+                  return; // Don't navigate for URLs
+                }
+                
+                // Check if it looks like a product barcode (numeric or standard format)
+                if (!/^[0-9]{8,}$/.test(barcodeText) && !/^[A-Z0-9]{6,}$/.test(barcodeText)) {
+                  toast.error('Invalid barcode format - please scan a product barcode');
+                  addDebug('Invalid barcode format');
+                  return;
+                }
+                
+                toast.success(`Product barcode detected: ${barcodeText}`);
                 router.push(`/product/${barcodeText}`);
                 return;
               }
@@ -409,15 +467,15 @@ export default function ScanPage() {
       </div>
 
       {/* Camera Video */}
-      <video
-        ref={videoRef}
-        className="w-full h-full object-cover"
-        playsInline
-        muted
-        autoPlay
-      />
+          <video
+            ref={videoRef}
+            className="w-full h-full object-cover"
+            playsInline
+            muted
+            autoPlay
+          />
 
-      {/* Scanning Frame */}
+        {/* Scanning Frame */}
       {hasPermission && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="relative">
@@ -435,7 +493,7 @@ export default function ScanPage() {
         </div>
       )}
 
-      {/* Instructions */}
+        {/* Instructions */}
       {hasPermission && (
         <div className="absolute bottom-20 left-0 right-0 px-6">
           <div className="bg-black/70 rounded-xl p-4 text-center mx-auto max-w-sm">
