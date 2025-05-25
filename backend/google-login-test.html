@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Login - Get JWT Token</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .login-btn {
+            background: #4285f4;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 20px 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .login-btn:hover {
+            background: #3367d6;
+        }
+        .login-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .token-section {
+            display: none;
+            margin-top: 30px;
+            text-align: left;
+        }
+        .token-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 5px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .copy-btn {
+            background: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .copy-btn:hover {
+            background: #218838;
+        }
+        .user-info {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        .logout-btn:hover {
+            background: #c82333;
+        }
+        .instructions {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Google Login JWT Generator</h1>
+        
+        <div class="instructions">
+            <strong>Instructions:</strong><br>
+            1. Click "Login with Google" below<br>
+            2. Complete Google authentication<br>
+            3. Copy the JWT token that appears<br>
+            4. Use it in Postman as: <code>"token": "your-jwt-here"</code>
+        </div>
+
+        <div id="status" class="status" style="display: none;"></div>
+
+        <button id="loginBtn" class="login-btn">
+            🔐 Login with Google
+        </button>
+
+        <div id="userSection" style="display: none;">
+            <div id="userInfo" class="user-info">
+                <h3>✅ Logged in successfully!</h3>
+                <p><strong>Name:</strong> <span id="userName"></span></p>
+                <p><strong>Email:</strong> <span id="userEmail"></span></p>
+            </div>
+
+            <button id="logoutBtn" class="logout-btn">🚪 Logout</button>
+            <button id="refreshBtn" class="login-btn">🔄 Refresh Token</button>
+        </div>
+
+        <div id="tokenSection" class="token-section">
+            <h3>🎯 Your JWT Token:</h3>
+            <div id="tokenBox" class="token-box"></div>
+            <button id="copyBtn" class="copy-btn">📋 Copy Token</button>
+            
+            <div style="margin-top: 20px; padding: 15px; background: #e3f2fd; border-radius: 5px;">
+                <strong>📱 Use in Postman:</strong><br>
+                POST <code>http://localhost:3000/api/auth/login</code><br>
+                Body: <code>{"token": "paste-token-here"}</code>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getAuth, 
+            GoogleAuthProvider, 
+            signInWithPopup, 
+            signOut,
+            onAuthStateChanged
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // ⚠️ REPLACE WITH YOUR ACTUAL FIREBASE CONFIG
+        // Get these values from: Firebase Console > Project Settings > General > Your apps
+       const firebaseConfig = {
+  apiKey: "AIzaSyCt_I7KZpHjTVEm5xVptRLdDrbHIzDSMtg",
+  authDomain: "nutriscan-f1f61.firebaseapp.com",
+  projectId: "nutriscan-f1f61",
+  storageBucket: "nutriscan-f1f61.firebasestorage.app",
+  messagingSenderId: "594011539739",
+  appId: "1:594011539739:web:1380e71ca4689c99e52bbe",
+  measurementId: "G-VMCGNGD86B"
+};
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        // DOM elements
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const userSection = document.getElementById('userSection');
+        const tokenSection = document.getElementById('tokenSection');
+        const userName = document.getElementById('userName');
+        const userEmail = document.getElementById('userEmail');
+        const tokenBox = document.getElementById('tokenBox');
+        const copyBtn = document.getElementById('copyBtn');
+        const status = document.getElementById('status');
+
+        let currentUser = null;
+        let currentToken = '';
+
+        // Show status message
+        function showStatus(message, type = 'success') {
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 5000);
+        }
+
+        // Get and display token
+        async function getAndDisplayToken() {
+            if (currentUser) {
+                try {
+                    showStatus('🔄 Getting fresh token...', 'success');
+                    const token = await currentUser.getIdToken(true);
+                    currentToken = token;
+                    tokenBox.textContent = token;
+                    tokenSection.style.display = 'block';
+                    showStatus('✅ JWT Token generated successfully!', 'success');
+                    
+                    // Store in localStorage for easy access
+                    localStorage.setItem('nutriscan_jwt_token', token);
+                } catch (error) {
+                    showStatus('❌ Error getting token: ' + error.message, 'error');
+                }
+            }
+        }
+
+        // Login with Google
+        loginBtn.addEventListener('click', async () => {
+            try {
+                showStatus('🔄 Signing in with Google...', 'success');
+                const result = await signInWithPopup(auth, provider);
+                // User will be handled by onAuthStateChanged
+            } catch (error) {
+                console.error('Login error:', error);
+                showStatus('❌ Login failed: ' + error.message, 'error');
+            }
+        });
+
+        // Logout
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+                showStatus('👋 Logged out successfully', 'success');
+            } catch (error) {
+                showStatus('❌ Logout error: ' + error.message, 'error');
+            }
+        });
+
+        // Refresh token
+        refreshBtn.addEventListener('click', () => {
+            getAndDisplayToken();
+        });
+
+        // Copy token to clipboard
+        copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(currentToken);
+                showStatus('📋 Token copied to clipboard!', 'success');
+            } catch (error) {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = currentToken;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showStatus('📋 Token copied to clipboard!', 'success');
+            }
+        });
+
+        // Auth state listener
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                
+                // Show user info
+                userName.textContent = user.displayName || 'Unknown';
+                userEmail.textContent = user.email;
+                
+                // Show/hide elements
+                loginBtn.style.display = 'none';
+                userSection.style.display = 'block';
+                
+                // Get token
+                getAndDisplayToken();
+                
+            } else {
+                currentUser = null;
+                currentToken = '';
+                
+                // Hide elements
+                loginBtn.style.display = 'inline-flex';
+                userSection.style.display = 'none';
+                tokenSection.style.display = 'none';
+                
+                // Clear stored token
+                localStorage.removeItem('nutriscan_jwt_token');
+                
+                showStatus('Please login to get your JWT token', 'success');
+            }
+        });
+
+        // Check for stored token on page load
+        window.addEventListener('load', () => {
+            const storedToken = localStorage.getItem('nutriscan_jwt_token');
+            if (storedToken && !currentUser) {
+                showStatus('⚠️ Found stored token, but please login again for fresh token', 'error');
+            }
+        });
+    </script>
+</body>
+</html> 
