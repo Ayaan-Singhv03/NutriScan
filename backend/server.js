@@ -22,7 +22,18 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+
+// CORS configuration
+const corsOptions = {
+  origin: [
+    'http://localhost:3000', // Local development
+    'https://nutriscanboyz.netlify.app', // Production frontend
+    'http://nutriscanboyz.netlify.app' // In case HTTP is used
+  ],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
 app.use(helmet()); 
 app.use(morgan('dev'));
 
