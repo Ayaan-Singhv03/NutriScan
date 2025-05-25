@@ -14,7 +14,7 @@ export default function HistoryPage() {
   }, []);
 
   const filteredLogs = logs.filter(log =>
-    log.name.toLowerCase().includes(searchTerm.toLowerCase())
+    log.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -50,8 +50,12 @@ export default function HistoryPage() {
           <div className="space-y-3">
             {filteredLogs.map((log, index) => (
               <ProductCard 
-                key={`${log.barcode}-${index}`} 
-                product={log}
+                key={`${log.barcode || log.name || 'unknown'}-${index}`}
+                id={log.barcode || log.name || `log-${index}`}
+                name={log.name || 'Unknown Product'}
+                image={log.image}
+                calories={log.calories || 0}
+                tags={log.tags}
                 onClick={() => console.log('View product details')}
               />
             ))}
