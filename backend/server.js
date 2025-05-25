@@ -12,6 +12,8 @@ const profileRoutes = require('./routes/profileRoutes');
 const dailyGoalRoutes = require('./routes/dailyGoalRoutes');
 const foodItemRoutes = require('./routes/foodItemRoutes');
 const consumptionLogRoutes = require('./routes/consumptionLogRoutes');
+const publicRoutes = require('./routes/publicRoutes');
+const barcodeRoutes = require('./routes/barcodeRoutes');
 
 dotenv.config();
 
@@ -103,6 +105,8 @@ app.get('/health', async (req, res) => {
 });
 
 // Register API routes
+app.use('/api/barcode', barcodeRoutes); // Public barcode routes (no auth required)
+app.use('/api/public', publicRoutes); // Public routes first (no auth required)
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/goals', dailyGoalRoutes);

@@ -48,34 +48,59 @@ export default function ProductPage({ params }: { params: { barcode: string } })
   }, [barcode]);
 
   const fetchProductData = async () => {
-    if (!firebaseUser) {
-      toast.error('Please log in to view product details');
-      router.push('/login');
-      return;
-    }
-
     setLoading(true);
     try {
-      const token = await firebaseUser.getIdToken();
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/food/barcode/${barcode}?autoFetch=true`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      console.log(`🔍 Fetching product data for barcode: ${barcode}`);
+      
+      // Fetch from your backend OpenFoodFacts service (no auth required for product lookup)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/barcode/${barcode}?autoFetch=true`);
 
       if (response.ok) {
         const data = await response.json();
-        console.log('🍎 Product data fetched:', data);
+        console.log('🍎 Product data fetched successfully:', data);
         setProduct(data);
       } else {
         const error = await response.json();
         console.error('❌ Product data fetch failed:', error);
-        toast.error(`Product not found: ${error.message || 'Unknown product'}`);
+        
+        // Try to create a basic product entry for manual input
+        setProduct({
+          foodItem: {
+            barcode: barcode,
+            name: `Product ${barcode}`,
+            caloriesPer100g: 0,
+            carbsPer100g: 0,
+            proteinsPer100g: 0,
+            fatsPer100g: 0,
+            sugarsPer100g: 0,
+            servingSize: 100
+          },
+          source: 'manual' as any,
+          additionalData: {
+            brand: 'Unknown Brand'
+          }
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching product data:', error);
-      toast.error('Failed to fetch product data. Please try again.');
+      
+      // Create a fallback product for manual entry
+      setProduct({
+        foodItem: {
+          barcode: barcode,
+          name: `Product ${barcode}`,
+          caloriesPer100g: 0,
+          carbsPer100g: 0,
+          proteinsPer100g: 0,
+          fatsPer100g: 0,
+          sugarsPer100g: 0,
+          servingSize: 100
+        },
+        source: 'manual' as any,
+        additionalData: {
+          brand: 'Unknown Brand'
+        }
+      });
     } finally {
       setLoading(false);
     }
@@ -93,9 +118,18 @@ export default function ProductPage({ params }: { params: { barcode: string } })
       return;
     }
 
+    // Check if user is logged in for logging consumption
+    if (!firebaseUser) {
+      toast.error('Please log in to log food consumption');
+      router.push('/login');
+      return;
+    }
+
     setLogging(true);
     try {
-      const token = await firebaseUser?.getIdToken();
+      console.log(`📝 Logging consumption: ${amount}g of ${product.foodItem.name}`);
+      const token = await firebaseUser.getIdToken();
+      
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/logs/scan`, {
         method: 'POST',
         headers: {
@@ -110,15 +144,15 @@ export default function ProductPage({ params }: { params: { barcode: string } })
 
       if (response.ok) {
         const logData = await response.json();
-        console.log('✅ Food logged:', logData);
-        toast.success(`Logged ${amount}g of ${product.foodItem.name}`);
+        console.log('✅ Food logged successfully:', logData);
+        toast.success(`Successfully logged ${amount}g of ${product.foodItem.name}!`);
         router.push('/');
       } else {
         const error = await response.json();
         console.error('❌ Failed to log consumption:', error);
         toast.error(error.error || 'Failed to log consumption');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error logging consumption:', error);
       toast.error('Failed to log consumption. Please try again.');
     } finally {
@@ -246,6 +280,15 @@ export default function ProductPage({ params }: { params: { barcode: string } })
             <p className="text-gray-600">{product.additionalData.brand}</p>
           )}
           <p className="text-sm text-gray-500 mt-1">Barcode: {barcode}</p>
+          <div className="mt-2">
+            <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+              product.source === 'database' ? 'bg-blue-100 text-blue-700' :
+              product.source === 'openfoodfacts' ? 'bg-green-100 text-green-700' :
+              'bg-gray-100 text-gray-700'
+            }`}>
+              Source: {product.source === 'openfoodfacts' ? 'OpenFoodFacts' : product.source}
+            </span>
+          </div>
         </div>
 
         {/* Amount Input */}
@@ -380,6 +423,16 @@ export default function ProductPage({ params }: { params: { barcode: string } })
             </div>
           </CardContent>
         </Card>
+
+        {/* Additional Product Information */}
+        {product.additionalData?.ingredients && (
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="font-semibold text-gray-900 mb-2">Ingredients</h3>
+              <p className="text-sm text-gray-600">{product.additionalData.ingredients}</p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Health Tags */}
         {healthTags.length > 0 && (

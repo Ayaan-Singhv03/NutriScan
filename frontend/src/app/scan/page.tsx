@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { BrowserMultiFormatReader, BrowserCodeReader } from '@zxing/browser';
+import { BrowserMultiFormatReader } from '@zxing/browser';
 import { useRouter } from 'next/navigation';
 import { X, Camera, RotateCcw, Flashlight } from 'lucide-react';
 import { toast } from 'sonner';
@@ -9,398 +9,234 @@ import { toast } from 'sonner';
 export default function ScanPage() {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
   const scanningRef = useRef<boolean>(false);
-  const initializationRef = useRef<boolean>(false);
-  const controlsRef = useRef<any>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [debug, setDebug] = useState<string[]>([]);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scanAttempts, setScanAttempts] = useState(0);
-  const [torchEnabled, setTorchEnabled] = useState(false);
 
   const addDebug = (message: string) => {
-    console.log(message);
-    setDebug(prev => [...prev.slice(-3), `${new Date().toLocaleTimeString().split(' ')[1]}: ${message}`]);
+    console.log(`[Scanner] ${message}`);
+    setDebug(prev => [...prev.slice(-4), `${new Date().toLocaleTimeString()}: ${message}`]);
+  };
+
+  const isValidProductBarcode = (barcode: string): boolean => {
+    // Reject URLs and very short codes
+    if (barcode.includes('://') || barcode.length < 6) {
+      return false;
+    }
+    
+    // Accept common product barcode formats
+    const patterns = [
+      /^[0-9]{8}$/,     // EAN-8
+      /^[0-9]{12}$/,    // UPC-A
+      /^[0-9]{13}$/,    // EAN-13
+      /^[0-9]{14}$/,    // ITF-14
+      /^[A-Z0-9]{6,}$/, // Code 39/128 alphanumeric
+    ];
+    
+    return patterns.some(pattern => pattern.test(barcode));
+  };
+
+  const handleBarcodeDetected = async (barcode: string) => {
+    // Stop scanning immediately
+    scanningRef.current = false;
+    setIsScanning(false);
+    
+    if (readerRef.current) {
+      try {
+        // Stop the reader by creating a new instance
+        readerRef.current = null;
+        addDebug('Scanner stopped');
+      } catch (e) {
+        console.log('Scanner reset error:', e);
+      }
+    }
+    
+    try {
+      addDebug(`🔍 Fetching product data for: ${barcode}`);
+      
+      // Fetch product data from your backend (which uses OpenFoodFacts service) - using public barcode endpoint
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/barcode/${barcode}?autoFetch=true`);
+      
+      if (response.ok) {
+        const productData = await response.json();
+        addDebug(`✅ Product found: ${productData.foodItem.name}`);
+        
+        // Navigate to product page with the barcode
+        addDebug(`🚀 Redirecting to /product/${barcode}`);
+        router.push(`/product/${barcode}`);
+      } else {
+        const error = await response.json();
+        addDebug(`❌ Product not found: ${error.message}`);
+        
+        // Still navigate to product page to allow manual entry
+        addDebug(`🚀 Redirecting to /product/${barcode} (manual entry)`);
+        router.push(`/product/${barcode}`);
+      }
+    } catch (error: any) {
+      addDebug(`❌ Fetch error: ${error.message}`);
+      
+      // Navigate anyway to allow manual entry
+      addDebug(`🚀 Redirecting to /product/${barcode} (error fallback)`);
+      router.push(`/product/${barcode}`);
+    }
   };
 
   useEffect(() => {
-    const initializeCamera = async () => {
+    let stream: MediaStream | null = null;
+
+    const initializeScanner = async () => {
       try {
-        addDebug('Requesting camera...');
+        addDebug('🎥 Requesting camera access...');
         
-        const constraints = {
+        // Request camera access
+        stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: { ideal: 'environment' },
-            width: { ideal: 640 },
-            height: { ideal: 480 }
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
           }
-        };
+        });
 
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        addDebug('Camera granted!');
-        setHasPermission(true);
-      streamRef.current = stream;
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-          addDebug('Video attached');
-          
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          setHasPermission(true);
+          addDebug('✅ Camera access granted');
+
           videoRef.current.onloadedmetadata = () => {
             if (videoRef.current) {
               videoRef.current.play().then(() => {
-                addDebug('Video playing');
-                setTimeout(initializeScanner, 1500);
+                addDebug('▶️ Video playing');
+                startScanning();
               });
             }
           };
         }
-
       } catch (error: any) {
-        addDebug(`Camera error: ${error.message}`);
+        addDebug(`❌ Camera error: ${error.message}`);
         setHasPermission(false);
       }
     };
 
-    const initializeScanner = async () => {
-      if (initializationRef.current) {
-        addDebug('Already initializing...');
+    const startScanning = async () => {
+      if (!videoRef.current || scanningRef.current) {
         return;
       }
 
       try {
-        initializationRef.current = true;
-        addDebug('Creating scanner...');
-        
-        // Clean up any existing reader
-        if (controlsRef.current) {
-          try {
-            controlsRef.current.stop();
-            addDebug('Previous controls stopped');
-          } catch (e) {
-            console.log('Previous controls cleanup:', e);
-          }
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Create new reader
+        addDebug('🔍 Starting barcode scanner...');
         readerRef.current = new BrowserMultiFormatReader();
-        addDebug('Scanner created');
+        scanningRef.current = true;
+        setIsScanning(true);
 
-        if (videoRef.current && videoRef.current.videoWidth > 0 && readerRef.current) {
-          addDebug(`Video ready: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`);
-          scanningRef.current = true;
-          setIsScanning(true);
-          startContinuousScanning();
-        } else {
-          addDebug('Video not ready, retrying...');
-          initializationRef.current = false;
-          setTimeout(initializeScanner, 1000);
-        }
-
-      } catch (error: any) {
-        addDebug(`Scanner init failed: ${error.message}`);
-        initializationRef.current = false;
-        
-        // Try fallback manual scanning only
-        setTimeout(() => {
-          if (videoRef.current && videoRef.current.videoWidth > 0) {
-            setIsScanning(true);
-            addDebug('Fallback: Manual scan only');
-          }
-        }, 2000);
-      }
-    };
-
-    const startContinuousScanning = async () => {
-      if (!readerRef.current || !videoRef.current || !scanningRef.current) {
-        return;
-      }
-
-      try {
-        addDebug('Starting continuous scan...');
-        
-        // Get available video devices using the static method from BrowserCodeReader
-        const videoInputDevices = await BrowserCodeReader.listVideoInputDevices();
-        addDebug(`Found ${videoInputDevices.length} camera(s)`);
-        
-        // Use decodeFromVideoDevice with device selection for better compatibility
-        const selectedDeviceId = videoInputDevices.find((device: any) => 
-          device.label.toLowerCase().includes('back') || 
-          device.label.toLowerCase().includes('environment')
-        )?.deviceId || videoInputDevices[0]?.deviceId;
-        
-        if (selectedDeviceId) {
-          addDebug(`Using device: ${selectedDeviceId.substring(0, 20)}...`);
-          
-          // Use decodeFromVideoDevice for more reliable continuous scanning
-          const controls = await readerRef.current.decodeFromVideoDevice(
-            selectedDeviceId,
-            videoRef.current,
-            (result: any, error: any, controls: any) => {
-              if (result && scanningRef.current) {
-                const barcodeText = result.getText();
-                addDebug(`🎯 FOUND: ${barcodeText}`);
-                
-                // Check if this is a URL or a product barcode
-                if (barcodeText.startsWith('http://') || barcodeText.startsWith('https://')) {
-                  toast.error('URL detected - please scan a product barcode');
-                  addDebug('URL detected, not a product barcode');
-                  return; // Don't navigate for URLs
-                }
-                
-                // Check if it looks like a product barcode (numeric or standard format)
-                if (!/^[0-9]{8,}$/.test(barcodeText) && !/^[A-Z0-9]{6,}$/.test(barcodeText)) {
-                  toast.error('Invalid barcode format - please scan a product barcode');
-                  addDebug('Invalid barcode format');
-                  return;
-                }
-                
-                toast.success(`Product barcode detected: ${barcodeText}`);
-                cleanup();
-                router.push(`/product/${barcodeText}`);
-              }
-              
-              // Count attempts
+        // Start continuous scanning
+        readerRef.current.decodeFromVideoElement(
+          videoRef.current,
+          (result, error) => {
+            if (result && scanningRef.current) {
+              const barcodeText = result.getText();
+              addDebug(`🎯 BARCODE DETECTED: ${barcodeText}`);
               setScanAttempts(prev => prev + 1);
               
-              // Log significant errors only
-              if (error && error.message && 
-                  !error.message.includes('NotFoundException') && 
-                  !error.message.includes('No MultiFormat') &&
-                  !error.message.includes('NotFoundError')) {
-                addDebug(`Scan error: ${error.message.substring(0, 25)}`);
+              // Validate barcode format
+              if (isValidProductBarcode(barcodeText)) {
+                addDebug(`✅ Valid barcode: ${barcodeText}`);
+                handleBarcodeDetected(barcodeText);
+              } else {
+                addDebug(`❌ Invalid barcode format: ${barcodeText}`);
+                // Skip toast notifications for invalid barcodes to avoid spam
               }
             }
-          );
-          
-          controlsRef.current = controls;
-          addDebug('Continuous scanning active');
-          
-        } else {
-          // Fallback to direct video element scanning
-          addDebug('No device ID, using video element directly');
-          
-          const controls = await readerRef.current.decodeFromVideoElement(
-            videoRef.current,
-            (result: any, error: any) => {
-              if (result && scanningRef.current) {
-                const barcodeText = result.getText();
-                addDebug(`🎯 FOUND: ${barcodeText}`);
-                
-                // Check if this is a URL or a product barcode
-                if (barcodeText.startsWith('http://') || barcodeText.startsWith('https://')) {
-                  toast.error('URL detected - please scan a product barcode');
-                  addDebug('URL detected, not a product barcode');
-                  return; // Don't navigate for URLs
-                }
-                
-                // Check if it looks like a product barcode (numeric or standard format)
-                if (!/^[0-9]{8,}$/.test(barcodeText) && !/^[A-Z0-9]{6,}$/.test(barcodeText)) {
-                  toast.error('Invalid barcode format - please scan a product barcode');
-                  addDebug('Invalid barcode format');
-                  return;
-                }
-                
-                toast.success(`Product barcode detected: ${barcodeText}`);
-                cleanup();
-                router.push(`/product/${barcodeText}`);
-              }
-              
-              // Count attempts
+
+            // Count scan attempts
+            if (error) {
               setScanAttempts(prev => prev + 1);
-              
               // Only log significant errors
-              if (error && error.message && 
+              if (error.message && 
                   !error.message.includes('NotFoundException') && 
-                  !error.message.includes('No MultiFormat') &&
-                  !error.message.includes('NotFoundError')) {
-                addDebug(`Scan error: ${error.message.substring(0, 25)}`);
+                  !error.message.includes('No MultiFormat')) {
+                addDebug(`Scan error: ${error.message.substring(0, 30)}`);
               }
             }
-          );
-          
-          controlsRef.current = controls;
-          addDebug('Continuous scanning active (fallback)');
-        }
-        
-      } catch (error: any) {
-        addDebug(`Continuous scan error: ${error.message}`);
-        initializationRef.current = false;
-        
-        // Try manual-only mode as final fallback
-        setTimeout(() => {
-          if (videoRef.current && videoRef.current.videoWidth > 0) {
-            setIsScanning(true);
-            addDebug('Fallback: Manual scan only mode');
           }
-        }, 1000);
+        );
+
+        addDebug('🟢 Continuous scanning active');
+      } catch (error: any) {
+        addDebug(`❌ Scanner initialization failed: ${error.message}`);
+        setIsScanning(false);
       }
     };
 
     const cleanup = () => {
       scanningRef.current = false;
-      initializationRef.current = false;
       setIsScanning(false);
       
-      if (controlsRef.current) {
+      if (readerRef.current) {
         try {
-          controlsRef.current.stop();
-          controlsRef.current = null;
-          addDebug('Scanner controls stopped');
+          // Clean up the reader
+          readerRef.current = null;
+          addDebug('🛑 Scanner stopped');
         } catch (e) {
           console.log('Scanner cleanup error:', e);
         }
       }
       
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-        addDebug('Camera stopped');
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        addDebug('📷 Camera stopped');
       }
     };
 
-    if (!navigator.mediaDevices) {
-      addDebug('Camera not supported');
+    if (navigator.mediaDevices) {
+      initializeScanner();
+    } else {
+      addDebug('❌ Camera not supported');
       setHasPermission(false);
-      return;
     }
 
-    initializeCamera();
-
     return cleanup;
-  }, [router]);
+  }, []);
 
   const handleClose = () => {
     router.push('/');
   };
 
   const manualScan = async () => {
-    if (!videoRef.current) {
-      toast.error('Video not ready');
+    if (!videoRef.current || !readerRef.current) {
       return;
     }
 
     try {
-      addDebug('Manual scan...');
+      addDebug('📸 Manual scan triggered...');
+      const result = await readerRef.current.decodeOnceFromVideoElement(videoRef.current);
       
-      // Create a fresh reader for manual scanning
-      const tempReader = new BrowserMultiFormatReader();
-      
-      // Use decodeOnceFromVideoElement for single scan
-      try {
-        const result = await tempReader.decodeOnceFromVideoElement(videoRef.current);
-        if (result) {
-          const barcodeText = result.getText();
-          addDebug(`Manual success: ${barcodeText}`);
-          
-          // Check if this is a URL or a product barcode
-          if (barcodeText.startsWith('http://') || barcodeText.startsWith('https://')) {
-            toast.error('URL detected - please scan a product barcode');
-            addDebug('URL detected, not a product barcode');
-            return; // Don't navigate for URLs
-          }
-          
-          // Check if it looks like a product barcode (numeric or standard format)
-          if (!/^[0-9]{8,}$/.test(barcodeText) && !/^[A-Z0-9]{6,}$/.test(barcodeText)) {
-            toast.error('Invalid barcode format - please scan a product barcode');
-            addDebug('Invalid barcode format');
-            return;
-          }
-          
-          toast.success(`Product barcode detected: ${barcodeText}`);
-          router.push(`/product/${barcodeText}`);
-          return;
+      if (result) {
+        const barcodeText = result.getText();
+        addDebug(`📸 Manual scan result: ${barcodeText}`);
+        
+        if (isValidProductBarcode(barcodeText)) {
+          await handleBarcodeDetected(barcodeText);
+        } else {
+          addDebug('❌ Invalid barcode format');
         }
-      } catch (error: any) {
-        // Try canvas approach as fallback
-        if (canvasRef.current && videoRef.current) {
-          const canvas = canvasRef.current;
-          const ctx = canvas.getContext('2d', { willReadFrequently: true });
-          if (ctx) {
-            canvas.width = videoRef.current.videoWidth;
-            canvas.height = videoRef.current.videoHeight;
-            ctx.drawImage(videoRef.current, 0, 0);
-            
-            try {
-              // Use regular decodeFromCanvas method (no callback)
-              const canvasResult = await tempReader.decodeFromCanvas(canvas);
-              if (canvasResult) {
-                const barcodeText = canvasResult.getText();
-                addDebug(`Canvas success: ${barcodeText}`);
-                
-                // Check if this is a URL or a product barcode
-                if (barcodeText.startsWith('http://') || barcodeText.startsWith('https://')) {
-                  toast.error('URL detected - please scan a product barcode');
-                  addDebug('URL detected, not a product barcode');
-                  return; // Don't navigate for URLs
-                }
-                
-                // Check if it looks like a product barcode (numeric or standard format)
-                if (!/^[0-9]{8,}$/.test(barcodeText) && !/^[A-Z0-9]{6,}$/.test(barcodeText)) {
-                  toast.error('Invalid barcode format - please scan a product barcode');
-                  addDebug('Invalid barcode format');
-                  return;
-                }
-                
-                toast.success(`Product barcode detected: ${barcodeText}`);
-                router.push(`/product/${barcodeText}`);
-                return;
-              }
-            } catch (canvasError: any) {
-              addDebug(`Canvas error: ${canvasError.message}`);
-            }
-          }
-        }
-      }
-      
-      addDebug('Manual failed');
-      toast.error('No barcode detected - try better lighting');
-      
-    } catch (error: any) {
-      addDebug(`Manual error: ${error.message}`);
-      toast.error('Scanner error - try restarting');
-    }
-  };
-
-  const toggleTorch = async () => {
-    if (!streamRef.current) return;
-
-    try {
-      const track = streamRef.current.getVideoTracks()[0];
-      const capabilities = track.getCapabilities() as any;
-      
-      if (capabilities.torch) {
-        await track.applyConstraints({
-          advanced: [{ torch: !torchEnabled } as any]
-        });
-        setTorchEnabled(!torchEnabled);
-        addDebug(`Torch ${!torchEnabled ? 'ON' : 'OFF'}`);
       } else {
-        toast.error('Flashlight not available');
+        addDebug('❌ No barcode detected');
       }
-    } catch (error) {
-      console.log('Torch error:', error);
-      toast.error('Could not control flashlight');
+    } catch (error: any) {
+      addDebug(`❌ Manual scan error: ${error.message}`);
     }
   };
 
-  const retrySetup = async () => {
-    addDebug('Restarting...');
+  const retrySetup = () => {
+    addDebug('🔄 Restarting scanner...');
     window.location.reload();
   };
 
   return (
     <div className="fixed inset-0 bg-black">
-      {/* Hidden canvas for fallback scanning */}
-      <canvas
-        ref={canvasRef}
-        className="hidden"
-      />
-
       {/* Header Controls */}
       <div className="absolute top-4 left-4 right-4 z-50 flex justify-between">
         <button
@@ -411,26 +247,13 @@ export default function ScanPage() {
         </button>
 
         <div className="flex gap-2">
-          {/* Manual scan always available */}
           <button
             onClick={manualScan}
-            className="bg-emerald-500/80 rounded-full p-3 hover:bg-emerald-600 transition-colors"
+            disabled={!isScanning}
+            className="bg-emerald-500/80 rounded-full p-3 hover:bg-emerald-600 transition-colors disabled:opacity-50"
           >
             <Camera className="text-white" size={24} />
           </button>
-          
-          {hasPermission && (
-            <button
-              onClick={toggleTorch}
-              className={`rounded-full p-3 transition-colors ${
-                torchEnabled 
-                  ? 'bg-yellow-500/80 hover:bg-yellow-600' 
-                  : 'bg-gray-500/80 hover:bg-gray-600'
-              }`}
-            >
-              <Flashlight className="text-white" size={20} />
-            </button>
-          )}
           
           <button
             onClick={retrySetup}
@@ -444,16 +267,15 @@ export default function ScanPage() {
       {/* Debug Panel */}
       <div className="absolute bottom-4 left-4 z-50 bg-black/80 text-white p-3 rounded-lg text-xs max-w-xs">
         <div className="mb-1">
-          Status: {hasPermission === null ? 'Loading' : hasPermission ? '✅ Ready' : '❌ Error'}
+          Status: {hasPermission === null ? '⏳ Loading' : hasPermission ? '✅ Ready' : '❌ Error'}
         </div>
         <div className="mb-1">
-          Auto-scan: {isScanning ? '🟢 Active' : '⚪ Manual only'}
+          Scanner: {isScanning ? '🟢 Active' : '⚪ Inactive'}
         </div>
-        <div className="mb-1">Torch: {torchEnabled ? '🔦 ON' : '⚫ OFF'}</div>
         <div className="mb-2">Attempts: {scanAttempts}</div>
         
         {debug.map((msg, i) => (
-          <div key={i} className="text-green-300 text-xs">{msg}</div>
+          <div key={i} className="text-green-300 text-xs mb-1">{msg}</div>
         ))}
 
         {hasPermission === false && (
@@ -467,15 +289,15 @@ export default function ScanPage() {
       </div>
 
       {/* Camera Video */}
-          <video
-            ref={videoRef}
-            className="w-full h-full object-cover"
-            playsInline
-            muted
-            autoPlay
-          />
+      <video
+        ref={videoRef}
+        className="w-full h-full object-cover"
+        playsInline
+        muted
+        autoPlay
+      />
 
-        {/* Scanning Frame */}
+      {/* Scanning Frame */}
       {hasPermission && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="relative">
@@ -488,12 +310,19 @@ export default function ScanPage() {
               
               {/* Center Line */}
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-0.5 bg-emerald-400"></div>
+              
+              {/* Scanning Animation */}
+              {isScanning && (
+                <div className="absolute top-0 left-0 w-full h-full">
+                  <div className="absolute top-0 left-0 w-full h-0.5 bg-emerald-400 animate-pulse"></div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
-        {/* Instructions */}
+      {/* Instructions */}
       {hasPermission && (
         <div className="absolute bottom-20 left-0 right-0 px-6">
           <div className="bg-black/70 rounded-xl p-4 text-center mx-auto max-w-sm">
@@ -501,7 +330,7 @@ export default function ScanPage() {
               📱 Hold barcode in frame
             </p>
             <p className="text-white/70 text-sm mt-1">
-              {isScanning ? 'Auto-scanning active' : 'Manual scan only'} • Use camera button to scan
+              {isScanning ? '🟢 Auto-scanning active' : '⚪ Scanner inactive'} • Use camera button for manual scan
             </p>
           </div>
         </div>

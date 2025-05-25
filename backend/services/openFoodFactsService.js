@@ -39,7 +39,7 @@ class OpenFoodFactsService {
       return {
         barcode: barcode,
         name: this.getProductName(product),
-        brand: product.brands || 'Unknown',
+        brand: product.brands || null,
         servingSize: this.getServingSize(product),
         caloriesPer100g: nutritionData.energy || 0,
         carbsPer100g: nutritionData.carbohydrates || 0,
@@ -74,28 +74,31 @@ class OpenFoodFactsService {
 
     // Helper function to get value per 100g, handling different suffixes
     const getNutrientPer100g = (nutrientName) => {
-      // Try different possible keys for per 100g values
+      // Try different possible keys for per 100g values (based on OpenFoodFacts API docs)
       const possibleKeys = [
         `${nutrientName}_100g`,
-        `${nutrientName}-per-100g`,
-        `${nutrientName}_per_100g`
+        `${nutrientName}-100g`,
+        `${nutrientName}_per_100g`,
+        `${nutrientName}-per-100g`
       ];
       
       for (const key of possibleKeys) {
-        if (nutriments[key] !== undefined && nutriments[key] !== null) {
-          return parseFloat(nutriments[key]) || 0;
+        if (nutriments[key] !== undefined && nutriments[key] !== null && nutriments[key] !== '') {
+          const value = parseFloat(nutriments[key]);
+          return isNaN(value) ? 0 : value;
         }
       }
       
       // Fallback to base nutrient if per 100g not available
-      if (nutriments[nutrientName] !== undefined) {
-        return parseFloat(nutriments[nutrientName]) || 0;
+      if (nutriments[nutrientName] !== undefined && nutriments[nutrientName] !== null && nutriments[nutrientName] !== '') {
+        const value = parseFloat(nutriments[nutrientName]);
+        return isNaN(value) ? 0 : value;
       }
       
       return 0;
     };
 
-    // Convert energy from kJ to kcal if needed
+    // Convert energy from kJ to kcal if needed (based on OpenFoodFacts API docs)
     let energy = getNutrientPer100g('energy-kcal') || getNutrientPer100g('energy_kcal');
     if (!energy) {
       const energyKj = getNutrientPer100g('energy-kj') || getNutrientPer100g('energy_kj') || getNutrientPer100g('energy');

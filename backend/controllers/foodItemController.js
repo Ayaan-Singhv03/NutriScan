@@ -14,48 +14,104 @@ const foodItemController = {
         where: { barcode } 
       });
 
-      if (foodItem) {
+      // Check if existing data is obviously incomplete and needs refresh
+      const isIncompleteData = foodItem && (
+        foodItem.caloriesPer100g < 10 || // Suspiciously low calories
+        !foodItem.carbsPer100g || 
+        !foodItem.proteinsPer100g || 
+        !foodItem.fatsPer100g ||
+        foodItem.name.includes('Product ') // Generic placeholder name
+      );
+
+      if (foodItem && !isIncompleteData) {
         return res.status(200).json({ 
           foodItem,
           source: 'database'
         });
       }
 
-      // If not found in database and autoFetch is enabled, try OpenFoodFacts
-      if (autoFetch) {
+      // If not found in database OR has incomplete data, and autoFetch is enabled, try OpenFoodFacts
+      if (autoFetch && (!foodItem || isIncompleteData)) {
         try {
           console.log(`Fetching data for barcode ${barcode} from OpenFoodFacts...`);
           const openFoodFactsData = await openFoodFactsService.getProductByBarcode(barcode);
           
           if (openFoodFactsData) {
-            // Create new food item in database
-            foodItem = await FoodItem.create({
-              barcode: openFoodFactsData.barcode,
-              name: openFoodFactsData.name,
-              servingSize: openFoodFactsData.servingSize,
-              caloriesPer100g: openFoodFactsData.caloriesPer100g,
-              carbsPer100g: openFoodFactsData.carbsPer100g,
-              proteinsPer100g: openFoodFactsData.proteinsPer100g,
-              fatsPer100g: openFoodFactsData.fatsPer100g,
-              sugarsPer100g: openFoodFactsData.sugarsPer100g
-            });
-
-            return res.status(201).json({
-              message: 'Food item fetched from OpenFoodFacts and saved to database',
-              foodItem,
-              source: 'openfoodfacts',
-              additionalData: {
+            if (foodItem && isIncompleteData) {
+              // Update existing incomplete record
+              console.log(`Updating incomplete record for barcode ${barcode} with OpenFoodFacts data`);
+              await foodItem.update({
+                name: openFoodFactsData.name,
                 brand: openFoodFactsData.brand,
+                servingSize: openFoodFactsData.servingSize,
+                caloriesPer100g: openFoodFactsData.caloriesPer100g,
+                carbsPer100g: openFoodFactsData.carbsPer100g,
+                proteinsPer100g: openFoodFactsData.proteinsPer100g,
+                fatsPer100g: openFoodFactsData.fatsPer100g,
+                sugarsPer100g: openFoodFactsData.sugarsPer100g,
+                fiberPer100g: openFoodFactsData.fiberPer100g,
+                sodiumPer100g: openFoodFactsData.sodiumPer100g,
                 imageUrl: openFoodFactsData.imageUrl,
-                ingredients: openFoodFactsData.ingredients,
-                categories: openFoodFactsData.categories
-              }
-            });
+                source: 'openfoodfacts',
+                lastUpdated: new Date()
+              });
+
+              return res.status(200).json({
+                message: 'Food item updated with OpenFoodFacts data',
+                foodItem,
+                source: 'openfoodfacts',
+                additionalData: {
+                  brand: openFoodFactsData.brand,
+                  imageUrl: openFoodFactsData.imageUrl,
+                  ingredients: openFoodFactsData.ingredients,
+                  categories: openFoodFactsData.categories
+                }
+              });
+            } else {
+              // Create new food item in database
+              foodItem = await FoodItem.create({
+                barcode: openFoodFactsData.barcode,
+                name: openFoodFactsData.name,
+                brand: openFoodFactsData.brand,
+                servingSize: openFoodFactsData.servingSize,
+                caloriesPer100g: openFoodFactsData.caloriesPer100g,
+                carbsPer100g: openFoodFactsData.carbsPer100g,
+                proteinsPer100g: openFoodFactsData.proteinsPer100g,
+                fatsPer100g: openFoodFactsData.fatsPer100g,
+                sugarsPer100g: openFoodFactsData.sugarsPer100g,
+                fiberPer100g: openFoodFactsData.fiberPer100g,
+                sodiumPer100g: openFoodFactsData.sodiumPer100g,
+                imageUrl: openFoodFactsData.imageUrl,
+                source: 'openfoodfacts',
+                lastUpdated: new Date()
+              });
+
+              return res.status(201).json({
+                message: 'Food item fetched from OpenFoodFacts and saved to database',
+                foodItem,
+                source: 'openfoodfacts',
+                additionalData: {
+                  brand: openFoodFactsData.brand,
+                  imageUrl: openFoodFactsData.imageUrl,
+                  ingredients: openFoodFactsData.ingredients,
+                  categories: openFoodFactsData.categories
+                }
+              });
+            }
           }
         } catch (openFoodFactsError) {
           console.error('OpenFoodFacts error:', openFoodFactsError.message);
-          // Continue to return 404 if OpenFoodFacts also fails
+          // Continue to return existing data or 404 if OpenFoodFacts also fails
         }
+      }
+
+      // If we have an existing item (even if incomplete) and OpenFoodFacts failed, return it
+      if (foodItem) {
+        return res.status(200).json({ 
+          foodItem,
+          source: 'database',
+          warning: isIncompleteData ? 'Data may be incomplete - OpenFoodFacts lookup failed' : undefined
+        });
       }
 
       return res.status(404).json({ 
