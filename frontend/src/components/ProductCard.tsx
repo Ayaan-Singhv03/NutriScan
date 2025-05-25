@@ -3,20 +3,16 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
 
-interface Product {
+interface ProductCardProps {
   id: string;
   name: string;
   image?: string;
   calories: number;
   tags?: string[];
-}
-
-interface ProductCardProps {
-  product: Product;
   onClick?: () => void;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onClick }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ id, name, image, calories, tags, onClick }) => {
   return (
     <div 
       className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
@@ -24,10 +20,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick }) => {
     >
       <div className="flex items-center space-x-3">
         <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
-          {product.image ? (
+          {image ? (
             <img 
-              src={product.image} 
-              alt={product.name}
+              src={image} 
+              alt={name}
               className="w-full h-full object-cover"
             />
           ) : (
@@ -36,11 +32,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onClick }) => {
         </div>
         
         <div className="flex-1">
-          <h3 className="font-semibold text-gray-900">{product.name}</h3>
-          <p className="text-sm text-gray-600">{product.calories} cal</p>
-          {product.tags && (
+          <h3 className="font-semibold text-gray-900">{name}</h3>
+          <p className="text-sm text-gray-600">{calories} cal</p>
+          {tags && (
             <div className="flex gap-1 mt-1">
-              {product.tags.map((tag) => (
+              {tags.map((tag) => (
                 <span 
                   key={tag}
                   className={`text-xs px-2 py-1 rounded-full ${
