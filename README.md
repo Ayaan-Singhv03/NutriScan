@@ -168,7 +168,7 @@ async function getAIRecommendation(nutritionData: object, userPreferences: objec
 ## 👤 Authors
 
 - **Amrinder Singh**
-- **Priyam Ghosh**
+- **Priyam Ghosh** ([GitHub](https://github.com/PriGoisitc))
 - **Ayaan Singh**
 - **Jagrit Dharewa** ([GitHub](https://github.com/Jagrit3500))
 
