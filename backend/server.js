@@ -14,6 +14,7 @@ const foodItemRoutes = require('./routes/foodItemRoutes');
 const consumptionLogRoutes = require('./routes/consumptionLogRoutes');
 const publicRoutes = require('./routes/publicRoutes');
 const barcodeRoutes = require('./routes/barcodeRoutes');
+const recommendationRoutes = require('./routes/recommendationRoutes');
 
 dotenv.config();
 
@@ -81,7 +82,9 @@ app.get('/', (req, res) => {
       profile: '/api/profile',
       goals: '/api/goals',
       food: '/api/food',
-      logs: '/api/logs'
+      logs: '/api/logs',
+      recommendations: '/api/recommendations',
+      barcode: '/api/barcode'
     }
   });
 });
@@ -123,6 +126,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/goals', dailyGoalRoutes);
 app.use('/api/food', foodItemRoutes);
 app.use('/api/logs', consumptionLogRoutes);
+app.use('/api/recommendations', recommendationRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

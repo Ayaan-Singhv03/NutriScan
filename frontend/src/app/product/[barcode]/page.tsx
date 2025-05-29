@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Plus, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -461,25 +461,39 @@ export default function ProductPage({ params }: { params: { barcode: string } })
           </div>
         )}
 
-        {/* Log Consumption Button */}
-        <Button
-          onClick={logConsumption}
-          disabled={logging || !amountConsumed || isNaN(parseFloat(amountConsumed)) || parseFloat(amountConsumed) <= 0}
-          className="w-full bg-emerald-500 hover:bg-emerald-600 py-4 text-lg font-semibold"
-          size="lg"
-        >
-          {logging ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin mr-2" />
-              Logging...
-            </>
-          ) : (
-            <>
-              <Plus className="w-5 h-5 mr-2" />
-              Add to Daily Log
-            </>
-          )}
-        </Button>
+        {/* Action Buttons */}
+        <div className="space-y-3">
+          {/* Get Recommendations Button */}
+          <Button
+            onClick={() => router.push(`/recommendations?barcode=${barcode}&product=${encodeURIComponent(product.foodItem.name)}`)}
+            variant="outline"
+            className="w-full border-emerald-500 text-emerald-600 hover:bg-emerald-50 py-4 text-lg font-semibold"
+            size="lg"
+          >
+            <Sparkles className="w-5 h-5 mr-2" />
+            Get Health Recommendations
+          </Button>
+
+          {/* Log Consumption Button */}
+          <Button
+            onClick={logConsumption}
+            disabled={logging || !amountConsumed || isNaN(parseFloat(amountConsumed)) || parseFloat(amountConsumed) <= 0}
+            className="w-full bg-emerald-500 hover:bg-emerald-600 py-4 text-lg font-semibold"
+            size="lg"
+          >
+            {logging ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                Logging...
+              </>
+            ) : (
+              <>
+                <Plus className="w-5 h-5 mr-2" />
+                Add to Daily Log
+              </>
+            )}
+          </Button>
+        </div>
       </main>
     </div>
   );
