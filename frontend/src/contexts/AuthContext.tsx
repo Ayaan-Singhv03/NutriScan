@@ -57,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       });
 
+
       if (response.ok) {
         console.log('✅ User has profile');
         setHasProfile(true);

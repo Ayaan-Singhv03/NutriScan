@@ -27,8 +27,8 @@ app.use(express.urlencoded({ extended: true }));
 const corsOptions = {
   origin: [
     'http://localhost:3000', // Local development
-    'https://nutriscanboyz.netlify.app', // Production frontend
-    'http://nutriscanboyz.netlify.app' // In case HTTP is used
+    'https://moonlit-kulfi-8c4807.netlify.app', // Production frontend
+    'http://moonlit-kulfi-8c4807.netlify.app' // In case HTTP is used
   ],
   credentials: true,
   optionsSuccessStatus: 200
