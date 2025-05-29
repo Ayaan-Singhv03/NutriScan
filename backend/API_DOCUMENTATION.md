@@ -427,6 +427,76 @@ Delete consumption log.
 
 ---
 
+## Gemini AI Endpoints
+
+### GET /api/gemini/health
+Check if Gemini AI service is operational.
+
+**Access:** Public (no authentication required)
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Gemini AI service is operational",
+  "testResponse": "Hello! How can I help you today?",
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+**Response (503) - Service Unavailable:**
+```json
+{
+  "success": false,
+  "message": "Gemini AI service is not available",
+  "error": "Gemini AI not initialized. Check your API key.",
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+### POST /api/gemini/prompt
+Send a prompt to Gemini AI and receive a response.
+
+**Access:** Private (requires authentication)
+
+**Request Body:**
+```json
+{
+  "prompt": "Give me 3 healthy breakfast recommendations for someone trying to lose weight"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "prompt": "Give me 3 healthy breakfast recommendations for someone trying to lose weight",
+    "response": "Here are 3 healthy breakfast recommendations for weight loss:\n\n1. **Greek Yogurt with Berries and Nuts**: High in protein to keep you full, with antioxidants from berries and healthy fats from nuts.\n\n2. **Oatmeal with Cinnamon and Apple**: Fiber-rich oats help with satiety, while cinnamon may help regulate blood sugar.\n\n3. **Scrambled Eggs with Spinach**: Protein-packed eggs combined with nutrient-dense spinach provide lasting energy without excess calories."
+  },
+  "message": "Response generated successfully"
+}
+```
+
+**Response (400) - Bad Request:**
+```json
+{
+  "success": false,
+  "message": "Prompt is required"
+}
+```
+
+**Response (500) - Server Error:**
+```json
+{
+  "success": false,
+  "message": "Failed to get response from Gemini",
+  "error": "Gemini AI not initialized. Check your API key."
+}
+```
+
+---
+
 ## Enhanced Features
 
 ### BMI Calculation
@@ -566,5 +636,36 @@ curl -X PUT http://localhost:5000/api/logs/1 \
   -d '{
     "amountConsumed": 200,
     "autoCalculate": true
+  }'
+```
+
+### 4. Gemini AI Flow
+
+```bash
+# 1. Check Gemini health (no auth required)
+curl -X GET http://localhost:5000/api/gemini/health
+
+# 2. Get nutrition recommendations
+curl -X POST http://localhost:5000/api/gemini/prompt \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer firebase_token" \
+  -d '{
+    "prompt": "Give me 3 healthy breakfast recommendations for someone trying to lose weight"
+  }'
+
+# 3. Get meal planning advice
+curl -X POST http://localhost:5000/api/gemini/prompt \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer firebase_token" \
+  -d '{
+    "prompt": "Create a weekly meal plan for a vegetarian trying to gain muscle mass"
+  }'
+
+# 4. Get food substitution suggestions
+curl -X POST http://localhost:5000/api/gemini/prompt \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer firebase_token" \
+  -d '{
+    "prompt": "What are healthy alternatives to replace white rice in my diet?"
   }'
 ``` 
