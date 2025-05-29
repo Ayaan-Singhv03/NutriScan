@@ -1,6 +1,6 @@
 const express = require('express');
 const { getGeminiResponse, healthCheck } = require('../controllers/geminiController');
-const { authenticateToken } = require('../middlewares/auth');
+const authMiddleware = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
@@ -16,6 +16,6 @@ router.get('/health', healthCheck);
  * @desc    Send prompt to Gemini AI and get response
  * @access  Private (requires authentication)
  */
-router.post('/prompt', authenticateToken, getGeminiResponse);
+router.post('/prompt', authMiddleware, getGeminiResponse);
 
 module.exports = router; 
