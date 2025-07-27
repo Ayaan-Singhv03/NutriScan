@@ -42,35 +42,14 @@ app.use(morgan('dev'));
 // Test database connection and sync models
 sequelize.authenticate()
   .then(() => {
-    console.log('✅ Database connection has been established successfully.');
-    console.log('🏗️ Syncing database models...');
-    
     // Sync all models without dropping existing data
-    return sequelize.sync({ alter: true }); // Use alter instead of force
+    return sequelize.sync({ force: true }); // Use alter instead of force
   })
   .then(() => {
-    console.log('✅ All models synchronized successfully!');
-    console.log('🎉 Database ready! Existing data preserved.');
-    
-    // Log current table counts
-    return Promise.all([
-      User.count(),
-      Profile.count(),
-      DailyGoal.count(),
-      FoodItem.count(),
-      ConsumptionLog.count()
-    ]);
-  })
-  .then(([userCount, profileCount, goalCount, foodCount, logCount]) => {
-    console.log('📊 Current database counts:');
-    console.log(`   Users: ${userCount}`);
-    console.log(`   Profiles: ${profileCount}`);
-    console.log(`   Daily Goals: ${goalCount}`);
-    console.log(`   Food Items: ${foodCount}`);
-    console.log(`   Consumption Logs: ${logCount}`);
+    // Database ready
   })
   .catch(err => {
-    console.error('❌ Database sync error:', err);
+    console.error('Database sync error:', err);
   });
 
 // Basic route

@@ -62,13 +62,9 @@ export default function RecentLogs({ refreshTrigger }: RecentLogsProps) {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('📋 Recent logs fetched:', data);
         setLogs(data.consumptionLogs || []);
-      } else {
-        console.error('❌ Failed to fetch recent logs:', response.status);
       }
     } catch (error) {
-      console.error('Error fetching recent logs:', error);
       toast.error('Failed to load recent logs');
     } finally {
       setLoading(false);

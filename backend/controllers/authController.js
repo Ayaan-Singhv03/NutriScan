@@ -5,36 +5,22 @@ const authController = {
     // POST /auth/login
     login: async (req, res) => {
         try {
-            console.log('🔐 Login attempt started');
             const { token } = req.body;
 
             if (!token) {
-                console.log('❌ No token provided');
                 return res.status(400).json({ 
                     error: 'Firebase token is required' 
                 });
             }
 
-            console.log('🔍 Verifying Firebase token...');
             // Verify the Firebase token
             const decodedToken = await auth.verifyIdToken(token);
-            console.log('✅ Token verified successfully');
             
             const { uid, email, name, picture } = decodedToken;
-            console.log('👤 Decoded user info:', { uid, email, name, picture });
-
-            console.log('🔍 === PROFILE CHECK DURING SIGN-IN ===');
-            console.log('🔍 Searching for user with Firebase UID:', uid);
             
             // Step 1: Find the user
             let user = await User.findOne({ 
                 where: { firebase_uid: uid }
-            });
-
-            console.log('🔍 User lookup result:', {
-                userExists: !!user,
-                userId: user?.id,
-                userEmail: user?.email
             });
 
             let isNewUser = false;

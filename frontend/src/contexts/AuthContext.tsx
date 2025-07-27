@@ -67,7 +67,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setHasProfile(false);
         setIsNewUser(true);
       }
-    } catch (error) {
+    } 
+    
+    catch (error) {
       console.error('Error checking profile:', error);
       setHasProfile(false);
     } finally {
@@ -90,48 +92,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    console.log('🔥 Setting up Firebase auth listener');
-    
     // Only set up auth listener if Firebase is initialized
     if (!auth) {
-      console.log('❌ Firebase not initialized, skipping auth setup');
       setLoading(false);
       return;
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log('🔥 Auth state changed:', firebaseUser ? 'User logged in' : 'User logged out');
       setFirebaseUser(firebaseUser);
       
       if (firebaseUser) {
-        console.log('👤 Firebase user details:', {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          displayName: firebaseUser.displayName
-        });
-        
         try {
           // Get ID token and authenticate with backend
-          console.log('🎫 Getting Firebase token...');
           const token = await firebaseUser.getIdToken();
-          console.log('✅ Firebase token obtained');
           
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-          console.log('🌐 Backend API URL:', apiUrl);
+          // Prefer env var but fallback to localhost during development
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
           
-          console.log('🔑 Authenticating with backend...');
           const response = await fetch(`${apiUrl}/api/auth/login`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({ token }),
-          });
-
-          console.log('🔑 Backend auth response:', {
-            status: response.status,
-            ok: response.ok,
-            statusText: response.statusText
           });
 
           if (response.ok) {
@@ -145,60 +128,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setIsNewUser(data.isNewUser);
             setHasProfile(!data.isNewUser); // If not new user, they have profile
           } else {
-            const errorData = await response.text();
-            console.error('❌ Backend authentication failed:', errorData);
             setUser(null);
             setIsNewUser(false);
             setHasProfile(false);
           }
         } catch (error) {
-          console.error('❌ Error during authentication:', error);
           setUser(null);
           setIsNewUser(false);
           setHasProfile(false);
         }
       } else {
-        console.log('👤 No Firebase user');
         setUser(null);
         setIsNewUser(false);
         setHasProfile(false);
       }
       
       setLoading(false);
-      console.log('🏁 Auth state change processing completed');
     });
 
     return () => {
-      console.log('🧹 Cleaning up auth listener');
       unsubscribe();
     };
   }, []);
 
-  // Debug state changes
-  useEffect(() => {
-    console.log('📊 Auth state update:', {
-      user: !!user,
-      firebaseUser: !!firebaseUser,
+  // Memoize context value to avoid unnecessary re-renders across the app
+  const value = React.useMemo(
+    () => ({
+      user,
+      firebaseUser,
       loading,
       isNewUser,
       hasProfile,
       profileLoading,
-      isReady
-    });
-  }, [user, firebaseUser, loading, isNewUser, hasProfile, profileLoading, isReady]);
+      isReady,
+      logout,
+      setUser,
+      checkProfile,
+    }),
+    [
+      user,
+      firebaseUser,
+      loading,
+      isNewUser,
+      hasProfile,
+      profileLoading,
+      isReady,
+      logout,
+    ]
+  );
 
-  const value = {
-    user,
-    firebaseUser,
-    loading,
-    isNewUser,
-    hasProfile,
-    profileLoading,
-    isReady,
-    logout,
-    setUser,
-    checkProfile,
-  };
+
 
   return (
     <AuthContext.Provider value={value}>

@@ -86,7 +86,6 @@ const RecommendationsPage = () => {
 
     try {
       // First, get the product data
-      console.log(`🔍 Fetching product data for barcode: ${barcode}`);
       const productResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/barcode/${barcode}?autoFetch=true`);
       
       if (!productResponse.ok) {
@@ -94,13 +93,11 @@ const RecommendationsPage = () => {
       }
 
       const productData = await productResponse.json();
-      console.log('🍎 Product data fetched:', productData);
 
       // Generate AI recommendations
       await generateAIRecommendations(productData);
 
     } catch (error: any) {
-      console.error('Error fetching recommendations:', error);
       setError(error.message || 'Failed to fetch recommendations');
       toast.error('Failed to load recommendations');
     } finally {

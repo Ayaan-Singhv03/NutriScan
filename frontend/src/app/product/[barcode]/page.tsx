@@ -50,18 +50,13 @@ export default function ProductPage({ params }: { params: { barcode: string } })
   const fetchProductData = async () => {
     setLoading(true);
     try {
-      console.log(`🔍 Fetching product data for barcode: ${barcode}`);
-      
       // Fetch from your backend OpenFoodFacts service (no auth required for product lookup)
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/barcode/${barcode}?autoFetch=true`);
 
       if (response.ok) {
         const data = await response.json();
-        console.log('🍎 Product data fetched successfully:', data);
         setProduct(data);
       } else {
-        const error = await response.json();
-        console.error('❌ Product data fetch failed:', error);
         
         // Try to create a basic product entry for manual input
         setProduct({
@@ -82,7 +77,6 @@ export default function ProductPage({ params }: { params: { barcode: string } })
         });
       }
     } catch (error: any) {
-      console.error('Error fetching product data:', error);
       
       // Create a fallback product for manual entry
       setProduct({

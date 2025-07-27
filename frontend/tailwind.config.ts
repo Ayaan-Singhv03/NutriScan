@@ -1,6 +1,6 @@
 import type { Config } from "tailwindcss"
 
-const config = {
+const config: Config = {
   darkMode: ["class"],
   content: [
     './pages/**/*.{ts,tsx}',
@@ -67,16 +67,24 @@ const config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "scan": {
-          "0%": { transform: "translateY(0)" },
-          "50%": { transform: "translateY(260px)" },
-          "100%": { transform: "translateY(0)" },
+        "scan-line": {
+          "0%": { 
+            transform: "translateY(0)",
+            opacity: "1"
+          },
+          "50%": { 
+            opacity: "0.7"
+          },
+          "100%": { 
+            transform: "translateY(192px)",
+            opacity: "1"
+          },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "scan": "scan 2s ease-in-out infinite",
+        "scan-line": "scan-line 2s ease-in-out infinite",
       },
     },
   },

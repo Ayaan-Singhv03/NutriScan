@@ -9,8 +9,22 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Icons } from '@/components/ui/icons';
 import { toast } from 'sonner';
-import NutritionProgress from '@/components/NutritionProgress';
-import RecentLogs from '@/components/RecentLogs';
+import dynamic from 'next/dynamic';
+
+// Code-split heavy data-visualisation components to shrink initial JS bundle
+const NutritionProgress = dynamic(() => import('@/components/NutritionProgress'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-40 flex items-center justify-center text-sm text-gray-500">Loading chart…</div>
+  ),
+});
+
+const RecentLogs = dynamic(() => import('@/components/RecentLogs'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-40 flex items-center justify-center text-sm text-gray-500">Loading logs…</div>
+  ),
+});
 
 export default function Home() {
   const { user, isNewUser, firebaseUser, loading, logout } = useAuth();
@@ -19,31 +33,19 @@ export default function Home() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
-    console.log('🏠 Home page - Auth State:', {
-      loading,
-      user: user ? `${user.email} (${user.id})` : null,
-      firebaseUser: firebaseUser ? `${firebaseUser.email} (${firebaseUser.uid})` : null,
-      isNewUser
-    });
-
     // Immediate routing without waiting for isReady
     if (!loading) {
       if (!user) {
         // User not authenticated, redirect to login immediately
-        console.log('🔓 No user, redirecting to login');
         router.replace('/login');
         return;
       } 
       
       if (isNewUser) {
         // New user (just created in database), redirect to onboarding immediately
-        console.log('🆕 New user detected, redirecting to onboarding');
         router.replace('/onboarding');
         return;
       }
-      
-      // Existing user (was already in database), load home page content
-      console.log('✅ Existing user, loading home page content');
     }
   }, [loading, user, isNewUser, router, firebaseUser]);
 
@@ -51,7 +53,6 @@ export default function Home() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && user && !isNewUser) {
-        console.log('🔄 Page became visible, refreshing data');
         setRefreshTrigger(prev => prev + 1);
       }
     };
@@ -67,9 +68,13 @@ export default function Home() {
     
     setSigningOut(true);
     try {
-      console.log('🚪 Starting sign out process...');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🚪 Starting sign out process...');
+      }
       await logout();
-      console.log('✅ Sign out successful, waiting for cleanup...');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Sign out successful, waiting for cleanup...');
+      }
       
       // Small delay to ensure all cleanup is complete
       await new Promise(resolve => setTimeout(resolve, 1000));

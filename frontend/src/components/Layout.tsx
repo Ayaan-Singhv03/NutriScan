@@ -4,7 +4,7 @@ import React from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import BottomNavigation from './BottomNavigation';
-import { Toaster } from 'react-hot-toast';
+import { Toaster } from 'sonner';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -25,16 +25,7 @@ const Layout = ({ children }: LayoutProps) => {
     <div className={`min-h-screen bg-gray-50 ${showBottomNav ? 'pb-20' : ''}`}>
       {children}
       {showBottomNav && <BottomNavigation />}
-      <Toaster 
-        position="top-center"
-        toastOptions={{
-          duration: 3000,
-          style: {
-            background: '#10b981',
-            color: '#fff',
-          },
-        }}
-      />
+      <Toaster position="top-center" />
     </div>
   );
 };

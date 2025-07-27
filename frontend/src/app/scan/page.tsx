@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
+import { BarcodeFormat, DecodeHintType } from '@zxing/library';
 import { useRouter } from 'next/navigation';
 import { X, Camera, RotateCcw, Flashlight } from 'lucide-react';
 import { toast } from 'sonner';
@@ -12,14 +13,8 @@ export default function ScanPage() {
   const readerRef = useRef<BrowserMultiFormatReader | null>(null);
   const scanningRef = useRef<boolean>(false);
   const [isScanning, setIsScanning] = useState(false);
-  const [debug, setDebug] = useState<string[]>([]);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scanAttempts, setScanAttempts] = useState(0);
-
-  const addDebug = (message: string) => {
-    console.log(`[Scanner] ${message}`);
-    setDebug(prev => [...prev.slice(-4), `${new Date().toLocaleTimeString()}: ${message}`]);
-  };
 
   const isValidProductBarcode = (barcode: string): boolean => {
     // Reject URLs and very short codes
@@ -48,38 +43,25 @@ export default function ScanPage() {
       try {
         // Stop the reader by creating a new instance
         readerRef.current = null;
-        addDebug('Scanner stopped');
       } catch (e) {
         console.log('Scanner reset error:', e);
       }
     }
     
     try {
-      addDebug(`🔍 Fetching product data for: ${barcode}`);
-      
       // Fetch product data from your backend (which uses OpenFoodFacts service) - using public barcode endpoint
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/barcode/${barcode}?autoFetch=true`);
       
       if (response.ok) {
         const productData = await response.json();
-        addDebug(`✅ Product found: ${productData.foodItem.name}`);
-        
         // Navigate to product page with the barcode
-        addDebug(`🚀 Redirecting to /product/${barcode}`);
         router.push(`/product/${barcode}`);
       } else {
-        const error = await response.json();
-        addDebug(`❌ Product not found: ${error.message}`);
-        
         // Still navigate to product page to allow manual entry
-        addDebug(`🚀 Redirecting to /product/${barcode} (manual entry)`);
         router.push(`/product/${barcode}`);
       }
     } catch (error: any) {
-      addDebug(`❌ Fetch error: ${error.message}`);
-      
       // Navigate anyway to allow manual entry
-      addDebug(`🚀 Redirecting to /product/${barcode} (error fallback)`);
       router.push(`/product/${barcode}`);
     }
   };
@@ -87,10 +69,8 @@ export default function ScanPage() {
   useEffect(() => {
     let stream: MediaStream | null = null;
 
-    const initializeScanner = async () => {
+        const initializeScanner = async () => {
       try {
-        addDebug('🎥 Requesting camera access...');
-        
         // Request camera access
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
@@ -103,19 +83,16 @@ export default function ScanPage() {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           setHasPermission(true);
-          addDebug('✅ Camera access granted');
 
           videoRef.current.onloadedmetadata = () => {
             if (videoRef.current) {
               videoRef.current.play().then(() => {
-                addDebug('▶️ Video playing');
                 startScanning();
               });
             }
           };
         }
       } catch (error: any) {
-        addDebug(`❌ Camera error: ${error.message}`);
         setHasPermission(false);
       }
     };
@@ -126,8 +103,19 @@ export default function ScanPage() {
       }
 
       try {
-        addDebug('🔍 Starting barcode scanner...');
-        readerRef.current = new BrowserMultiFormatReader();
+        // Restrict barcode formats and reduce delay between scans for faster performance
+        const hints = new Map();
+        hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+          BarcodeFormat.EAN_8,
+          BarcodeFormat.EAN_13,
+          BarcodeFormat.UPC_A,
+          BarcodeFormat.UPC_E,
+          BarcodeFormat.CODE_128,
+          BarcodeFormat.ITF,
+        ]);
+
+        // timeBetweenScansMillis = 100 (default is 500)
+        readerRef.current = new BrowserMultiFormatReader(hints, 100);
         scanningRef.current = true;
         setIsScanning(true);
 
@@ -137,35 +125,21 @@ export default function ScanPage() {
           (result, error) => {
             if (result && scanningRef.current) {
               const barcodeText = result.getText();
-              addDebug(`🎯 BARCODE DETECTED: ${barcodeText}`);
               setScanAttempts(prev => prev + 1);
               
               // Validate barcode format
               if (isValidProductBarcode(barcodeText)) {
-                addDebug(`✅ Valid barcode: ${barcodeText}`);
                 handleBarcodeDetected(barcodeText);
-              } else {
-                addDebug(`❌ Invalid barcode format: ${barcodeText}`);
-                // Skip toast notifications for invalid barcodes to avoid spam
               }
             }
 
             // Count scan attempts
             if (error) {
               setScanAttempts(prev => prev + 1);
-              // Only log significant errors
-              if (error.message && 
-                  !error.message.includes('NotFoundException') && 
-                  !error.message.includes('No MultiFormat')) {
-                addDebug(`Scan error: ${error.message.substring(0, 30)}`);
-              }
             }
           }
         );
-
-        addDebug('🟢 Continuous scanning active');
       } catch (error: any) {
-        addDebug(`❌ Scanner initialization failed: ${error.message}`);
         setIsScanning(false);
       }
     };
@@ -178,22 +152,19 @@ export default function ScanPage() {
         try {
           // Clean up the reader
           readerRef.current = null;
-          addDebug('🛑 Scanner stopped');
         } catch (e) {
-          console.log('Scanner cleanup error:', e);
+          // Ignore cleanup errors
         }
       }
       
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
-        addDebug('📷 Camera stopped');
       }
     };
 
     if (navigator.mediaDevices) {
       initializeScanner();
     } else {
-      addDebug('❌ Camera not supported');
       setHasPermission(false);
     }
 
@@ -210,28 +181,21 @@ export default function ScanPage() {
     }
 
     try {
-      addDebug('📸 Manual scan triggered...');
       const result = await readerRef.current.decodeOnceFromVideoElement(videoRef.current);
       
       if (result) {
         const barcodeText = result.getText();
-        addDebug(`📸 Manual scan result: ${barcodeText}`);
         
         if (isValidProductBarcode(barcodeText)) {
           await handleBarcodeDetected(barcodeText);
-        } else {
-          addDebug('❌ Invalid barcode format');
         }
-      } else {
-        addDebug('❌ No barcode detected');
       }
     } catch (error: any) {
-      addDebug(`❌ Manual scan error: ${error.message}`);
+      // Ignore manual scan errors
     }
   };
 
   const retrySetup = () => {
-    addDebug('🔄 Restarting scanner...');
     window.location.reload();
   };
 
@@ -246,47 +210,36 @@ export default function ScanPage() {
           <X className="text-white" size={24} />
         </button>
 
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <button
             onClick={manualScan}
-            disabled={!isScanning}
-            className="bg-emerald-500/80 rounded-full p-3 hover:bg-emerald-600 transition-colors disabled:opacity-50"
+            disabled={!hasPermission}
+            className="bg-emerald-500/90 rounded-full p-4 hover:bg-emerald-600 transition-all duration-200 disabled:opacity-50 shadow-lg hover:scale-105"
           >
-            <Camera className="text-white" size={24} />
+            <Camera className="text-white" size={28} />
           </button>
           
           <button
             onClick={retrySetup}
-            className="bg-blue-500/80 rounded-full p-3 hover:bg-blue-600 transition-colors"
+            className="bg-blue-500/90 rounded-full p-4 hover:bg-blue-600 transition-all duration-200 shadow-lg hover:scale-105"
           >
-            <RotateCcw className="text-white" size={20} />
+            <RotateCcw className="text-white" size={24} />
           </button>
         </div>
       </div>
 
-      {/* Debug Panel */}
-      <div className="absolute bottom-4 left-4 z-50 bg-black/80 text-white p-3 rounded-lg text-xs max-w-xs">
-        <div className="mb-1">
-          Status: {hasPermission === null ? '⏳ Loading' : hasPermission ? '✅ Ready' : '❌ Error'}
-        </div>
-        <div className="mb-1">
-          Scanner: {isScanning ? '🟢 Active' : '⚪ Inactive'}
-        </div>
-        <div className="mb-2">Attempts: {scanAttempts}</div>
-        
-        {debug.map((msg, i) => (
-          <div key={i} className="text-green-300 text-xs mb-1">{msg}</div>
-        ))}
-
-        {hasPermission === false && (
+      {/* Error Panel - Only show when needed */}
+      {hasPermission === false && (
+        <div className="absolute bottom-4 left-4 z-50 bg-red-500/90 text-white p-3 rounded-lg text-sm max-w-xs">
+          <p className="mb-2">Camera access denied</p>
           <button 
             onClick={retrySetup}
-            className="mt-2 bg-red-500 hover:bg-red-600 px-3 py-1 rounded text-white text-xs"
+            className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded text-white text-sm transition-colors"
           >
             Retry Camera
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Camera Video */}
       <video
@@ -311,12 +264,23 @@ export default function ScanPage() {
               {/* Center Line */}
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-0.5 bg-emerald-400"></div>
               
-              {/* Scanning Animation */}
-              {isScanning && (
-                <div className="absolute top-0 left-0 w-full h-full">
-                  <div className="absolute top-0 left-0 w-full h-0.5 bg-emerald-400 animate-pulse"></div>
+              {/* Enhanced Scanning Animation */}
+              <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
+                {/* Scanning Line */}
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-scan-line"></div>
+                
+                {/* Corner Glow Animation */}
+                <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg animate-pulse"></div>
+                <div className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg animate-pulse"></div>
+                <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg animate-pulse"></div>
+                <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-emerald-400 rounded-br-lg animate-pulse"></div>
+                
+                {/* Center Target */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                  <div className="w-6 h-6 border-2 border-emerald-400 rounded-full animate-ping"></div>
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-emerald-400 rounded-full"></div>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
@@ -330,7 +294,7 @@ export default function ScanPage() {
               📱 Hold barcode in frame
             </p>
             <p className="text-white/70 text-sm mt-1">
-              {isScanning ? '🟢 Auto-scanning active' : '⚪ Scanner inactive'} • Use camera button for manual scan
+              Use camera button for manual scan
             </p>
           </div>
         </div>

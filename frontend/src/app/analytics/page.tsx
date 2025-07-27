@@ -185,7 +185,7 @@ export default function AnalyticsPage() {
   };
 
   const getInsights = () => {
-    const insights = [];
+    const insights: Array<{type: string; title: string; message: string}> = [];
     const averages = getAverages();
     
     if (!averages || !todaySummary) return insights;

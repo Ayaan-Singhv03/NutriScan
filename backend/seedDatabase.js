@@ -309,8 +309,6 @@ function generateConsumptionLogs(userIds, foodBarcodes) {
 
 async function seedDatabase() {
   try {
-    console.log('🌱 Starting database seeding...');
-    
     // Clear existing data (optional - uncomment if you want to start fresh)
     // await ConsumptionLog.destroy({ where: {} });
     // await DailyGoal.destroy({ where: {} });
@@ -318,14 +316,11 @@ async function seedDatabase() {
     // await FoodItem.destroy({ where: {} });
     // await User.destroy({ where: {} });
     
-    console.log('📝 Creating users...');
     const users = await User.bulkCreate(dummyUsers, { 
       ignoreDuplicates: true,
       returning: true 
     });
-    console.log(`✅ Created ${users.length} users`);
     
-    console.log('👤 Creating profiles...');
     const profiles = [];
     for (let i = 0; i < users.length && i < dummyProfiles.length; i++) {
       profiles.push({
@@ -334,9 +329,7 @@ async function seedDatabase() {
       });
     }
     await Profile.bulkCreate(profiles, { ignoreDuplicates: true });
-    console.log(`✅ Created ${profiles.length} profiles`);
     
-    console.log('🎯 Creating daily goals...');
     const dailyGoals = [];
     for (let i = 0; i < users.length && i < dummyDailyGoals.length; i++) {
       dailyGoals.push({
@@ -345,16 +338,12 @@ async function seedDatabase() {
       });
     }
     await DailyGoal.bulkCreate(dailyGoals, { ignoreDuplicates: true });
-    console.log(`✅ Created ${dailyGoals.length} daily goals`);
     
-    console.log('🍎 Creating food items...');
     const foodItems = await FoodItem.bulkCreate(dummyFoodItems, { 
       ignoreDuplicates: true,
       returning: true 
     });
-    console.log(`✅ Created ${foodItems.length} food items`);
     
-    console.log('📊 Creating consumption logs...');
     const userIds = users.map(u => u.id);
     const foodBarcodes = foodItems.map(f => f.barcode);
     const consumptionLogs = generateConsumptionLogs(userIds, foodBarcodes);
